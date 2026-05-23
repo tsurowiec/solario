@@ -112,9 +112,9 @@ new class extends Component {
 
     @if ($this->price !== null)
     <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
-        <flux:icon name="banknotes" class="shrink-0 {{ $this->price >= 0 ? 'text-blue-400' : 'text-green-400' }}" />
-        <flux:text class="font-semibold text-base">
-            {{ number_format($this->price, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+        <flux:icon name="banknotes" class="shrink-0 text-blue-400" />
+        <flux:text class="font-semibold text-base {{ $this->price < 0 ? 'text-green-400' : '' }}">
+            {{ number_format($this->price, 2) }} <span class="font-normal text-xs {{ $this->price < 0 ? 'text-green-400' : 'text-zinc-400' }}">PLN</span>
         </flux:text>
     </div>
     @endif
