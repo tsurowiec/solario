@@ -5,6 +5,13 @@
             <flux:button icon="bolt" disabled>{{ __('Tesia') }}</flux:button>
             <flux:button icon="bolt" disabled>{{ __('Tessy') }}</flux:button>
         </div>
+        <div class="portrait:hidden">
+            <livewire:monthly-chart />
+        </div>
+        <flux:card class="landscape:hidden flex items-center gap-3 text-zinc-400">
+            <flux:icon name="arrow-path" class="shrink-0 rotate-90" />
+            <flux:text>{{ __('Rotate for charts') }}</flux:text>
+        </flux:card>
         <div class="grid auto-rows-min gap-4 md:grid-cols-2">
             <?php $lastDate = \Carbon\Carbon::parse(\App\Models\Reading::latest('date')->value('date')); ?>
             <livewire:usage-card :label="$lastDate->format('F Y')" :month="$lastDate->toDateString()" />
