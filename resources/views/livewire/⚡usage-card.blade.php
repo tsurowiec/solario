@@ -118,38 +118,42 @@ new class extends Component {
 {{--        </div>--}}
 {{--    </div>--}}
 
-    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 grid grid-cols-3 gap-2 mb-2">
-        <div class="flex items-center gap-2">
-            <flux:icon name="banknotes" class="shrink-0 text-blue-400" />
-            <flux:text class="font-semibold text-base">
-                {{ number_format($this->usage->amount, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
-            </flux:text>
+    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center gap-2">
+                <flux:icon name="banknotes" class="shrink-0 text-blue-400" />
+                <flux:text class="font-semibold text-base">
+                    {{ number_format($this->usage->amount, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+                </flux:text>
+            </div>
+            <div class="flex items-center gap-2">
+                <flux:icon name="tag" class="shrink-0 text-blue-400" />
+                <flux:text class="font-semibold text-base">
+                    {{ number_format($this->usage->pricePerUnit, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/kWh</span>
+                </flux:text>
+            </div>
         </div>
-        <div class="flex items-center gap-2">
-            <flux:icon name="tag" class="shrink-0 text-blue-400" />
-            <flux:text class="font-semibold text-base">
-                {{ number_format($this->usage->pricePerUnit, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/kWh</span>
-            </flux:text>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center gap-2">
+                <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+                <flux:text class="font-semibold text-base">
+                    {{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+                </flux:text>
+            </div>
+            <div class="flex items-center gap-2">
+                <flux:icon name="bolt" class="shrink-0 text-red-400" />
+                <flux:text class="font-semibold text-base">
+                    {{ number_format($this->amountByTessy, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+                </flux:text>
+            </div>
         </div>
-    </div>
-    <div class="grid grid-cols-3 gap-2">
-        <div class="flex items-center gap-2">
-            <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
-            <flux:text class="font-semibold text-base">
-                {{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
-            </flux:text>
-        </div>
-        <div class="flex items-center gap-2">
-            <flux:icon name="bolt" class="shrink-0 text-red-400" />
-            <flux:text class="font-semibold text-base">
-                {{ number_format($this->amountByTessy, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
-            </flux:text>
-        </div>
-        <div class="flex items-center gap-2">
-            <flux:icon name="home" class="shrink-0 text-zinc-400" />
-            <flux:text class="font-semibold text-base">
-                {{ number_format($this->amountByHouse, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
-            </flux:text>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center gap-2">
+                <flux:icon name="home" class="shrink-0 text-zinc-400" />
+                <flux:text class="font-semibold text-base">
+                    {{ number_format($this->amountByHouse, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+                </flux:text>
+            </div>
         </div>
     </div>
 </flux:card>
