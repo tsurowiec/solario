@@ -166,6 +166,16 @@ new class extends Component {
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
             <div class="flex items-center gap-2">
+                <flux:icon name="sun" class="shrink-0 text-blue-400" />
+                <flux:text class="font-medium">{{ number_format($this->usage->peakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span></flux:text>
+            </div>
+            <div class="flex items-center gap-2">
+                <flux:icon name="moon" class="shrink-0 text-blue-400" />
+                <flux:text class="font-medium">{{ number_format($this->usage->offPeakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span></flux:text>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="flex items-center gap-2">
                 <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
                 <flux:text class="font-medium">{{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
             </div>

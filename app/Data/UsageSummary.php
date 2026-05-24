@@ -22,6 +22,14 @@ readonly class UsageSummary
 
     public int $fedIn;
 
+    public float $peakPayable;
+
+    public float $offPeakPayable;
+
+    public float $peakPayableRatio;
+
+    public float $offPeakPayableRatio;
+
     public float $amount;
 
     public float $pricePerUnit;
@@ -41,9 +49,16 @@ readonly class UsageSummary
         $this->fedIn = $peakFedIn + $offPeakFedIn;
         $this->totalUsage = $this->consumed + $this->autoConsumed;
 
-        $peak = self::PEAK_RATE * ($peakConsumed - self::FED_IN_RATIO * $peakFedIn);
-        $offPeak = self::OFF_PEAK_RATE * ($offPeakConsumed - self::FED_IN_RATIO * $offPeakFedIn);
-        $this->amount = $peak + $offPeak;
+        $this->peakPayable = $peakConsumed - self::FED_IN_RATIO * $peakFedIn;
+        $this->offPeakPayable = $this->offPeakConsumed - self::FED_IN_RATIO * $this->offPeakFedIn;
+        $clampedPeak = max(0, $this->peakPayable);
+        $clampedOffPeak = max(0, $this->offPeakPayable);
+        $clampedTotal = $clampedPeak + $clampedOffPeak;
+        $this->peakPayableRatio = $clampedTotal > 0 ? $clampedPeak / $clampedTotal : 0.0;
+        $this->offPeakPayableRatio = $clampedTotal > 0 ? $clampedOffPeak / $clampedTotal : 0.0;
+        $peakAmount = self::PEAK_RATE * $this->peakPayable;
+        $offPeakAmount = self::OFF_PEAK_RATE * $this->offPeakPayable;
+        $this->amount = $peakAmount + $offPeakAmount;
         $this->pricePerUnit = $this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0;
     }
 
