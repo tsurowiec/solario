@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Season;
 use App\Services\ReadingDiff;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
@@ -11,7 +12,12 @@ new class extends Component {
     public function chartData(): array
     {
         $diff = app(ReadingDiff::class);
+        $season = Season::orderByDesc('starting_date')->first();
+        $start = $season
+            ? Carbon::parse($season->starting_date)->startOfMonth()
+            : Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfMonth();
         $last = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
+        $months = (int) $start->diffInMonths($last->copy()->startOfMonth());
 
         $categories = [];
         $consumed = [];
@@ -20,8 +26,8 @@ new class extends Component {
         $pvGenerated = [];
         $price = [];
 
-        for ($i = 11; $i >= 0; $i--) {
-            $month = $last->copy()->subMonthsNoOverflow($i);
+        for ($i = 0; $i <= $months; $i++) {
+            $month = $start->copy()->addMonthsNoOverflow($i);
             $usage = $diff->month($month);
 
             $categories[]   = $month->format('M');
@@ -33,6 +39,12 @@ new class extends Component {
         }
 
         return compact('categories', 'consumed', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
+    }
+
+    #[Computed]
+    public function seasonName(): string
+    {
+        return Season::orderByDesc('starting_date')->value('name') ?? __('Overview');
     }
 
 }; ?>
@@ -129,6 +141,6 @@ new class extends Component {
     }"
     data-chart-data="{{ json_encode($this->chartData) }}"
 >
-    <flux:heading size="lg" class="mb-4">{{ __('Monthly Overview') }}</flux:heading>
+    <flux:heading size="lg" class="mb-4">{{ $this->seasonName }}</flux:heading>
     <div x-ref="chart"></div>
 </flux:card>

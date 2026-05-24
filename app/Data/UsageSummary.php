@@ -30,6 +30,14 @@ readonly class UsageSummary
 
     public float $offPeakPayableRatio;
 
+    public float $paidRatio;
+
+    public float $sunRatio;
+
+    public float $peakRatio;
+
+    public float $offPeakRatio;
+
     public float $amount;
 
     public float $pricePerUnit;
@@ -60,6 +68,10 @@ readonly class UsageSummary
         $offPeakAmount = self::OFF_PEAK_RATE * $this->offPeakPayable;
         $this->amount = $peakAmount + $offPeakAmount;
         $this->pricePerUnit = $this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0;
+        $this->paidRatio = ($this->peakPayable + $this->offPeakPayable) < 0 ? 0.0 : ($this->peakPayable + $this->offPeakPayable) / $this->totalUsage;
+        $this->sunRatio = 1 - $this->paidRatio;
+        $this->peakRatio = $this->paidRatio * $this->peakPayableRatio;
+        $this->offPeakRatio = $this->paidRatio * $this->offPeakPayableRatio;
     }
 
     public function toDate(): Carbon

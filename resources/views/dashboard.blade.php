@@ -4,8 +4,9 @@
             <flux:button href="{{ route('readings.create') }}" icon="plus">{{ __('Add Reading') }}</flux:button>
             <flux:button href="{{ route('car-charges.create') }}" icon="bolt" wire:navigate>{{ __('Add Car Charge') }}</flux:button>
         </div>
-        <div class="portrait:hidden">
+        <div class="portrait:hidden flex flex-col gap-4">
             <livewire:monthly-chart />
+            <livewire:energy-split-chart />
         </div>
         <flux:card class="landscape:hidden flex items-center gap-3 text-zinc-400">
             <flux:icon name="arrow-path" class="shrink-0 rotate-90" />
