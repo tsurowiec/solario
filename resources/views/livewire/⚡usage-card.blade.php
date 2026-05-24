@@ -167,11 +167,21 @@ new class extends Component {
         <div class="grid grid-cols-2 gap-2 mb-4">
             <div class="flex items-center gap-2">
                 <flux:icon name="sun" class="shrink-0 text-blue-400" />
-                <flux:text class="font-medium">{{ number_format($this->usage->peakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span></flux:text>
+                <flux:text class="font-medium">
+                    {{ number_format($this->usage->peakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span>
+                    @if($this->usage->peakPayable < 0)
+                        <span class="font-normal text-xs text-zinc-400">({{ number_format($this->usage->peakPayable * -1, 1) }} kWh)</span>
+                    @endif
+                </flux:text>
             </div>
             <div class="flex items-center gap-2">
                 <flux:icon name="moon" class="shrink-0 text-blue-400" />
-                <flux:text class="font-medium">{{ number_format($this->usage->offPeakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span></flux:text>
+                <flux:text class="font-medium">
+                    {{ number_format($this->usage->offPeakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span>
+                    @if($this->usage->offPeakPayable < 0)
+                        <span class="font-normal text-xs text-zinc-400">({{ number_format($this->usage->offPeakPayable * -1, 1) }} kWh)</span>
+                    @endif
+                </flux:text>
             </div>
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
