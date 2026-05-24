@@ -16,8 +16,12 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="plus-circle" :href="route('readings.create')" :current="request()->routeIs('readings.create')" wire:navigate>
-                        {{ __('Add Reading') }}
+                    <flux:sidebar.item icon="list-bullet" :href="route('readings.index')" :current="request()->routeIs('readings.*')" wire:navigate>
+                        {{ __('Readings') }}
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="bolt" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
+                        {{ __('Car Charges') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

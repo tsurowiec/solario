@@ -1,7 +1,7 @@
 <?php
 
 use App\Data\UsageSummary;
-use App\Services\PriceCalculator;
+use App\Services\CarChargeUsage;
 use App\Services\ReadingDiff;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
@@ -19,13 +19,21 @@ new class extends Component {
     }
 
     #[Computed]
-    public function price(): ?float
+    public function amountByTesia(): float
     {
-        if ($this->usage === null) {
-            return null;
-        }
+        return app(CarChargeUsage::class)->month('tesia', Carbon::parse($this->month)) * $this->usage->pricePerUnit;
+    }
 
-        return app(PriceCalculator::class)->calculate($this->usage);
+    #[Computed]
+    public function amountByTessy(): float
+    {
+        return app(CarChargeUsage::class)->month('tessy', Carbon::parse($this->month)) * $this->usage->pricePerUnit;
+    }
+
+    #[Computed]
+    public function amountByHouse(): float
+    {
+        return $this->usage->amount - $this->amountByTesia - $this->amountByTessy;
     }
 
 }; ?>
@@ -110,13 +118,39 @@ new class extends Component {
 {{--        </div>--}}
 {{--    </div>--}}
 
-    @if ($this->price !== null)
-    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
-        <flux:icon name="banknotes" class="shrink-0 text-blue-400" />
-        <flux:text class="font-semibold text-base {{ $this->price < 0 ? 'text-green-400' : '' }}">
-            {{ number_format($this->price, 2) }} <span class="font-normal text-xs {{ $this->price < 0 ? 'text-green-400' : 'text-zinc-400' }}">PLN</span>
-        </flux:text>
+    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 grid grid-cols-3 gap-2 mb-2">
+        <div class="flex items-center gap-2">
+            <flux:icon name="banknotes" class="shrink-0 text-blue-400" />
+            <flux:text class="font-semibold text-base">
+                {{ number_format($this->usage->amount, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+            </flux:text>
+        </div>
+        <div class="flex items-center gap-2">
+            <flux:icon name="tag" class="shrink-0 text-blue-400" />
+            <flux:text class="font-semibold text-base">
+                {{ number_format($this->usage->pricePerUnit, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/kWh</span>
+            </flux:text>
+        </div>
     </div>
-    @endif
+    <div class="grid grid-cols-3 gap-2">
+        <div class="flex items-center gap-2">
+            <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+            <flux:text class="font-semibold text-base">
+                {{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+            </flux:text>
+        </div>
+        <div class="flex items-center gap-2">
+            <flux:icon name="bolt" class="shrink-0 text-red-400" />
+            <flux:text class="font-semibold text-base">
+                {{ number_format($this->amountByTessy, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+            </flux:text>
+        </div>
+        <div class="flex items-center gap-2">
+            <flux:icon name="home" class="shrink-0 text-zinc-400" />
+            <flux:text class="font-semibold text-base">
+                {{ number_format($this->amountByHouse, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span>
+            </flux:text>
+        </div>
+    </div>
 </flux:card>
 @endif

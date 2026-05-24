@@ -2,8 +2,7 @@
     <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
         <div class="flex gap-2">
             <flux:button href="{{ route('readings.create') }}" icon="plus">{{ __('Add Reading') }}</flux:button>
-            <flux:button icon="bolt" disabled>{{ __('Tesia') }}</flux:button>
-            <flux:button icon="bolt" disabled>{{ __('Tessy') }}</flux:button>
+            <flux:button href="{{ route('car-charges.create') }}" icon="bolt" wire:navigate>{{ __('Add Car Charge') }}</flux:button>
         </div>
         <div class="portrait:hidden">
             <livewire:monthly-chart />

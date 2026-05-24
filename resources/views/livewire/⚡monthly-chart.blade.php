@@ -1,6 +1,5 @@
 <?php
 
-use App\Services\PriceCalculator;
 use App\Services\ReadingDiff;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
@@ -13,8 +12,6 @@ new class extends Component {
     {
         $diff = app(ReadingDiff::class);
         $last = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
-
-        $calculator = app(PriceCalculator::class);
 
         $categories = [];
         $consumed = [];
@@ -32,7 +29,7 @@ new class extends Component {
             $autoConsumed[] = $usage?->autoConsumed ?? 0;
             $fedIn[]        = $usage?->fedIn ?? 0;
             $pvGenerated[]  = $usage?->pvGenerated ?? 0;
-            $price[]        = $usage ? round($calculator->calculate($usage), 2) : 0;
+            $price[]        = $usage ? round($usage->amount, 2) : 0;
         }
 
         return compact('categories', 'consumed', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
