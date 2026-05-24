@@ -15,7 +15,11 @@
             <?php
                 $lastDate  = \Carbon\Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
                 $firstDate = \Carbon\Carbon::parse(\App\Models\Reading::oldest('date')->value('date'));
+                $currentSeason = \App\Models\Season::orderByDesc('starting_date')->first();
             ?>
+            @if($currentSeason)
+                <livewire:usage-card :label="$currentSeason->name" :season="$currentSeason->id" key="season-current" />
+            @endif
             @foreach(range($lastDate->year, $firstDate->year) as $year)
                 <?php
                     $startMonth = ($year === $lastDate->year)  ? $lastDate->month : 12;

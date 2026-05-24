@@ -1,6 +1,7 @@
 <?php
 
 use App\Data\UsageSummary;
+use App\Models\Season;
 use App\Services\CarChargeUsage;
 use App\Services\ReadingDiff;
 use Carbon\Carbon;
@@ -12,11 +13,16 @@ new class extends Component {
     public string $label = '';
     public string $month = '';
     public string $year = '';
+    public int $season = 0;
 
     #[Computed]
     public function usage(): ?UsageSummary
     {
         $diff = app(ReadingDiff::class);
+
+        if ($this->season !== 0) {
+            return $diff->season(Season::findOrFail($this->season));
+        }
 
         if ($this->year !== '') {
             return $diff->year(Carbon::parse($this->year));
@@ -29,11 +35,14 @@ new class extends Component {
     public function amountByTesia(): float
     {
         $carUsage = app(CarChargeUsage::class);
-        $date = Carbon::parse($this->year !== '' ? $this->year : $this->month);
 
-        $kWh = $this->year !== ''
-            ? $carUsage->year('tesia', $date)
-            : $carUsage->month('tesia', $date);
+        if ($this->season !== 0) {
+            $kWh = $carUsage->season('tesia', Season::findOrFail($this->season));
+        } elseif ($this->year !== '') {
+            $kWh = $carUsage->year('tesia', Carbon::parse($this->year));
+        } else {
+            $kWh = $carUsage->month('tesia', Carbon::parse($this->month));
+        }
 
         return $kWh * $this->usage->pricePerUnit;
     }
@@ -42,11 +51,14 @@ new class extends Component {
     public function amountByTessy(): float
     {
         $carUsage = app(CarChargeUsage::class);
-        $date = Carbon::parse($this->year !== '' ? $this->year : $this->month);
 
-        $kWh = $this->year !== ''
-            ? $carUsage->year('tessy', $date)
-            : $carUsage->month('tessy', $date);
+        if ($this->season !== 0) {
+            $kWh = $carUsage->season('tessy', Season::findOrFail($this->season));
+        } elseif ($this->year !== '') {
+            $kWh = $carUsage->year('tessy', Carbon::parse($this->year));
+        } else {
+            $kWh = $carUsage->month('tessy', Carbon::parse($this->month));
+        }
 
         return $kWh * $this->usage->pricePerUnit;
     }

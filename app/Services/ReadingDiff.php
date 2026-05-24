@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Data\UsageSummary;
 use App\Models\Reading;
+use App\Models\Season;
 use Carbon\Carbon;
 
 class ReadingDiff
@@ -32,6 +33,21 @@ class ReadingDiff
 
         $from = $date->copy()->startOfMonth()->subDay()->max($first);
         $to = $date->copy()->endOfMonth()->startOfDay()->min($last);
+
+        if ($from->gt($to)) {
+            return null;
+        }
+
+        return $this->between($from, $to);
+    }
+
+    public function season(Season $season): ?UsageSummary
+    {
+        $first = Carbon::parse(Reading::oldest('date')->value('date'))->startOfDay();
+        $last = Carbon::parse(Reading::latest('date')->value('date'))->startOfDay();
+
+        $from = Carbon::parse($season->starting_date)->subDay()->max($first);
+        $to = Carbon::parse($season->endDate())->startOfDay()->min($last);
 
         if ($from->gt($to)) {
             return null;
