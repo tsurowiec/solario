@@ -39,7 +39,7 @@
 
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-3" inset="left" />
+            <flux:sidebar.toggle icon="bars-3" inset="left" />
 
             <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
 
