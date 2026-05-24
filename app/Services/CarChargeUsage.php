@@ -7,6 +7,11 @@ use Carbon\Carbon;
 
 class CarChargeUsage
 {
+    public function year(string $carId, Carbon $date): int
+    {
+        return $this->between($carId, $date->copy()->startOfYear(), $date->copy()->endOfYear());
+    }
+
     public function month(string $carId, Carbon $date): int
     {
         return $this->between($carId, $date->copy()->startOfMonth(), $date->copy()->endOfMonth());

@@ -3,7 +3,7 @@
 @import 'flatpickr/dist/flatpickr.min.css';
 
 @source '../views';
-@source inline("max-lg:hidden max-md:hidden portrait:hidden landscape:hidden");
+@source inline("max-lg:hidden max-md:hidden portrait:hidden landscape:hidden landscape:grid-cols-2");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';

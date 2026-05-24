@@ -11,15 +11,27 @@
             <flux:icon name="arrow-path" class="shrink-0 rotate-90" />
             <flux:text>{{ __('Rotate for charts') }}</flux:text>
         </flux:card>
-        <div class="grid auto-rows-min gap-4 md:grid-cols-2">
-            <?php $lastDate = \Carbon\Carbon::parse(\App\Models\Reading::latest('date')->value('date')); ?>
-            <livewire:usage-card :label="$lastDate->format('F Y')" :month="$lastDate->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow()->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow()->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow(2)->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow(2)->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow(3)->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow(3)->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow(4)->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow(4)->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow(5)->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow(5)->toDateString()" />
-            <livewire:usage-card :label="$lastDate->copy()->subMonthsNoOverflow(6)->format('F Y')" :month="$lastDate->copy()->subMonthsNoOverflow(6)->toDateString()" />
+        <div class="grid auto-rows-min gap-4 landscape:grid-cols-2">
+            <?php
+                $lastDate  = \Carbon\Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
+                $firstDate = \Carbon\Carbon::parse(\App\Models\Reading::oldest('date')->value('date'));
+            ?>
+            @foreach(range($lastDate->year, $firstDate->year) as $year)
+                <?php
+                    $startMonth = ($year === $lastDate->year)  ? $lastDate->month : 12;
+                    $endMonth   = ($year === $firstDate->year) ? $firstDate->month : 1;
+                    $yearDate   = \Carbon\Carbon::create($year, 1, 1);
+                ?>
+                <livewire:usage-card :label="(string) $year" :year="$yearDate->toDateString()" :key="'year-'.$year" />
+                @foreach(range($startMonth, $endMonth) as $month)
+                    <?php $monthDate = \Carbon\Carbon::create($year, $month, 1); ?>
+                    <livewire:usage-card
+                        :label="$monthDate->format('F Y')"
+                        :month="$monthDate->toDateString()"
+                        :key="'month-'.$year.'-'.$month"
+                    />
+                @endforeach
+            @endforeach
         </div>
     </div>
 </x-layouts::app>

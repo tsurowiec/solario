@@ -10,6 +10,21 @@ class ReadingDiff
 {
     public function __construct(private readonly ReadingInterpolator $interpolator) {}
 
+    public function year(Carbon $date): ?UsageSummary
+    {
+        $first = Carbon::parse(Reading::oldest('date')->value('date'))->startOfDay();
+        $last = Carbon::parse(Reading::latest('date')->value('date'))->startOfDay();
+
+        $from = $date->copy()->startOfYear()->subDay()->max($first);
+        $to = $date->copy()->endOfYear()->startOfDay()->min($last);
+
+        if ($from->gt($to)) {
+            return null;
+        }
+
+        return $this->between($from, $to);
+    }
+
     public function month(Carbon $date): ?UsageSummary
     {
         $first = Carbon::parse(Reading::oldest('date')->value('date'))->startOfDay();
