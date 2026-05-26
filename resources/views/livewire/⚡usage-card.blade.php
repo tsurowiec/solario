@@ -272,36 +272,68 @@ new class extends Component {
                 <flux:text class="font-medium">{{ number_format($this->usage->offPeakPayableRatio * 100, 1) }} <span class="font-normal text-xs text-zinc-400">%</span></flux:text>
             </div>
         </div>
-        <div x-show="!daily" class="grid grid-cols-2 gap-2 mb-4">
-            <div class="flex items-center gap-2">
-                <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
-                <flux:text class="font-medium">{{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+        <div x-show="!daily">
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByTesia, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByTesia, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <flux:icon name="bolt" class="shrink-0 text-red-400" />
-                <flux:text class="font-medium">{{ number_format($this->amountByTessy, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-red-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByTessy, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-red-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByTessy, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="home" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByHouse, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="home" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByHouse, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+                </div>
             </div>
         </div>
-        <div x-show="!daily" class="grid grid-cols-2 gap-2">
-            <div class="flex items-center gap-2">
-                <flux:icon name="home" class="shrink-0 text-zinc-400" />
-                <flux:text class="font-medium">{{ number_format($this->amountByHouse, 2) }} <span class="font-normal text-xs text-zinc-400">PLN</span></flux:text>
+        <div x-show="daily" x-cloak>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByTesia / $days, 1) }} <span class="font-normal text-xs text-zinc-400">kWh/d</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByTesia / $days, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/d</span></flux:text>
+                </div>
             </div>
-        </div>
-        <div x-show="daily" x-cloak class="grid grid-cols-2 gap-2 mb-4">
-            <div class="flex items-center gap-2">
-                <flux:icon name="bolt" class="shrink-0 text-zinc-400" />
-                <flux:text class="font-medium">{{ number_format($this->kWhByTesia, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-red-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByTessy / $days, 1) }} <span class="font-normal text-xs text-zinc-400">kWh/d</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="bolt" class="shrink-0 text-red-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByTessy / $days, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/d</span></flux:text>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <flux:icon name="bolt" class="shrink-0 text-red-400" />
-                <flux:text class="font-medium">{{ number_format($this->kWhByTessy, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
-            </div>
-        </div>
-        <div x-show="daily" x-cloak class="grid grid-cols-2 gap-2">
-            <div class="flex items-center gap-2">
-                <flux:icon name="home" class="shrink-0 text-zinc-400" />
-                <flux:text class="font-medium">{{ number_format($this->kWhByHouse, 1) }} <span class="font-normal text-xs text-zinc-400">kWh</span></flux:text>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="flex items-center gap-2">
+                    <flux:icon name="home" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->kWhByHouse / $days, 1) }} <span class="font-normal text-xs text-zinc-400">kWh/d</span></flux:text>
+                </div>
+                <div class="flex items-center gap-2">
+                    <flux:icon name="home" class="shrink-0 text-zinc-400" />
+                    <flux:text class="font-medium">{{ number_format($this->amountByHouse / $days, 2) }} <span class="font-normal text-xs text-zinc-400">PLN/d</span></flux:text>
+                </div>
             </div>
         </div>
     </div>
