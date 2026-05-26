@@ -20,8 +20,8 @@ new class extends Component {
         $months = (int) $start->diffInMonths($lastReading->copy()->startOfMonth());
 
         $categories = [];
-        $monthly    = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => []];
-        $cumulative = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => []];
+        $monthly    = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => [], 'peakKwh' => [], 'offPeakKwh' => [], 'sunKwh' => []];
+        $cumulative = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => [], 'peakKwh' => [], 'offPeakKwh' => [], 'sunKwh' => []];
 
         $firstReading = Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfDay();
         $seasonFrom = $season
@@ -40,13 +40,20 @@ new class extends Component {
             $monthly['offPeak'][]    = round($usage ? $usage->offPeakRatio * 100 : 0.0, 1);
             $monthly['sun'][]        = round($usage ? $usage->sunRatio * 100 : 0.0, 1);
             $monthly['totalUsage'][] = $tu;
+            $monthly['peakKwh'][]    = $usage ? round($usage->peakRatio * $tu) : 0;
+            $monthly['offPeakKwh'][] = $usage ? round($usage->offPeakRatio * $tu) : 0;
+            $monthly['sunKwh'][]     = $usage ? round($usage->sunRatio * $tu) : 0;
 
             $cumTo  = $month->copy()->endOfMonth()->startOfDay()->min($lastReadingDay);
             $cumUsage = $diff->between($seasonFrom, $cumTo);
+            $cumTu = $cumUsage->totalUsage;
             $cumulative['peak'][]       = round($cumUsage->peakRatio * 100, 1);
             $cumulative['offPeak'][]    = round($cumUsage->offPeakRatio * 100, 1);
             $cumulative['sun'][]        = round($cumUsage->sunRatio * 100, 1);
-            $cumulative['totalUsage'][] = $cumUsage->totalUsage;
+            $cumulative['totalUsage'][] = $cumTu;
+            $cumulative['peakKwh'][]    = round($cumUsage->peakRatio * $cumTu);
+            $cumulative['offPeakKwh'][] = round($cumUsage->offPeakRatio * $cumTu);
+            $cumulative['sunKwh'][]     = round($cumUsage->sunRatio * $cumTu);
         }
 
         return compact('categories', 'monthly', 'cumulative');
@@ -114,9 +121,10 @@ new class extends Component {
                 tooltip: {
                     theme: isDark ? 'dark' : 'light',
                     y: {
-                        formatter(v, { dataPointIndex }) {
-                            const usage = self.data[self.mode].totalUsage[dataPointIndex];
-                            const kwh = Math.round(v / 100 * usage);
+                        formatter(v, { seriesIndex, dataPointIndex }) {
+                            const d = self.data[self.mode];
+                            const keys = ['sunKwh', 'offPeakKwh', 'peakKwh'];
+                            const kwh = d[keys[seriesIndex]][dataPointIndex];
                             return v.toFixed(1) + '% (' + kwh + ' kWh)';
                         },
                     },
