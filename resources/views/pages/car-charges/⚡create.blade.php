@@ -31,7 +31,7 @@ class extends Component {
 
         Flux::toast(variant: 'success', text: __('Charge saved.'));
 
-        $this->redirect(route('car-charges.create'), navigate: true);
+        $this->redirect(route('dashboard'), navigate: true);
     }
 
 }; ?>

@@ -69,7 +69,7 @@ class extends Component {
 
         Flux::toast(variant: 'success', text: __('Reading saved.'));
 
-        $this->redirect(route('readings.create'), navigate: true);
+        $this->redirect(route('dashboard'), navigate: true);
     }
 
 }; ?>
