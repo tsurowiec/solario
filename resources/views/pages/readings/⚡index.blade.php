@@ -1,19 +1,48 @@
 <?php
 
 use App\Models\Reading;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Readings')]
 #[Layout('layouts.app', ['title' => 'Readings'])]
 class extends Component {
+    use WithPagination;
 
-    #[Computed]
-    public function readings()
+    public function delete(Reading $reading): void
     {
-        return Reading::orderBy('date', 'desc')->get();
+        if ($this->undeletableIds()->contains($reading->id)) {
+            return;
+        }
+
+        $reading->delete();
+    }
+
+    public function rendering($view)
+    {
+        $view->with('readings', Reading::orderBy('date', 'desc')->paginate(15));
+        $view->with('undeletableIds', $this->undeletableIds());
+    }
+
+    private function undeletableIds()
+    {
+        $ids = Reading::query()
+            ->joinSub(
+                Reading::selectRaw("max(date) as max_date, strftime('%Y-%m', date) as ym")->groupByRaw("strftime('%Y-%m', date)"),
+                'latest',
+                fn ($join) => $join->on('readings.date', '=', 'latest.max_date'),
+            )
+            ->pluck('readings.id');
+
+        $firstId = Reading::orderBy('date')->value('id');
+
+        if ($firstId) {
+            $ids->push($firstId);
+        }
+
+        return $ids->unique();
     }
 
 }; ?>
@@ -33,9 +62,10 @@ class extends Component {
                 <flux:table.column>{{ __('Off-Peak Consumed') }}</flux:table.column>
                 <flux:table.column>{{ __('Peak Fed-In') }}</flux:table.column>
                 <flux:table.column>{{ __('Off-Peak Fed-In') }}</flux:table.column>
+                <flux:table.column class="w-0" />
             </flux:table.columns>
             <flux:table.rows>
-                @foreach ($this->readings as $reading)
+                @foreach ($readings as $reading)
                     <flux:table.row :key="$reading->id">
                         <flux:table.cell>{{ $reading->date->format('d M Y') }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($reading->pv_generated) }}</flux:table.cell>
@@ -43,9 +73,16 @@ class extends Component {
                         <flux:table.cell>{{ number_format($reading->off_peak_consumed) }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($reading->peak_fed_in) }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($reading->off_peak_fed_in) }}</flux:table.cell>
+                        <flux:table.cell>
+                            @unless ($undeletableIds->contains($reading->id))
+                                <flux:button variant="danger" size="xs" icon="trash" wire:click="delete({{ $reading->id }})" wire:confirm="{{ __('Are you sure you want to delete this reading?') }}" />
+                            @endunless
+                        </flux:table.cell>
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
         </flux:table>
     </flux:card>
+
+    {{ $readings->links() }}
 </div>
