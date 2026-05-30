@@ -18,6 +18,27 @@ class extends Component {
         $this->resetPage();
     }
 
+    public function merge(int $id): void
+    {
+        if ($this->car === '') {
+            return;
+        }
+
+        $charge = CarCharge::findOrFail($id);
+
+        $next = CarCharge::where('car_id', $charge->car_id)
+            ->where('date', '>', $charge->date)
+            ->orderBy('date', 'asc')
+            ->first();
+
+        if (! $next || ! $next->date->isSameMonth($charge->date)) {
+            return;
+        }
+
+        $next->increment('charged', $charge->charged);
+        $charge->delete();
+    }
+
     public function rendering($view)
     {
         $query = CarCharge::orderBy('date', 'desc');
@@ -28,6 +49,23 @@ class extends Component {
 
         $view->with('charges', $query->paginate(15));
         $view->with('cars', CarCharge::distinct()->pluck('car_id'));
+
+        $mergeableIds = collect();
+
+        if ($this->car !== '') {
+            $allForCar = CarCharge::where('car_id', $this->car)
+                ->orderBy('date', 'asc')
+                ->get(['id', 'date']);
+
+            foreach ($allForCar as $index => $c) {
+                $next = $allForCar->get($index + 1);
+                if ($next && $next->date->isSameMonth($c->date)) {
+                    $mergeableIds->push($c->id);
+                }
+            }
+        }
+
+        $view->with('mergeableIds', $mergeableIds);
     }
 
 }; ?>
@@ -51,6 +89,7 @@ class extends Component {
                 <flux:table.column>{{ __('Date') }}</flux:table.column>
                 <flux:table.column>{{ __('Car') }}</flux:table.column>
                 <flux:table.column>{{ __('Charged (kWh)') }}</flux:table.column>
+                <flux:table.column class="w-0" />
             </flux:table.columns>
             <flux:table.rows>
                 @foreach ($charges as $charge)
@@ -58,6 +97,11 @@ class extends Component {
                         <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
                         <flux:table.cell>{{ ucfirst($charge->car_id) }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($charge->charged) }}</flux:table.cell>
+                        <flux:table.cell>
+                            @if ($mergeableIds->contains($charge->id))
+                                <flux:button size="xs" icon="arrow-up" wire:click="merge({{ $charge->id }})" wire:confirm="{{ __('Merge this charge into the next one?') }}" />
+                            @endif
+                        </flux:table.cell>
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
