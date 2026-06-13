@@ -13,8 +13,16 @@ class extends Component {
 
     public string $car = '';
 
-    public function updatedCar()
+    public function mount(): void
     {
+        if ($this->car === '') {
+            $this->car = (string) CarCharge::orderBy('car_id')->value('car_id');
+        }
+    }
+
+    public function selectCar(string $car): void
+    {
+        $this->car = $car;
         $this->resetPage();
     }
 
@@ -76,12 +84,14 @@ class extends Component {
         <flux:button href="{{ route('car-charges.create') }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
     </div>
 
-    <flux:select wire:model.live="car" class="max-w-48">
-        <flux:select.option value="">{{ __('All Cars') }}</flux:select.option>
+    <flux:button.group>
         @foreach ($cars as $carId)
-            <flux:select.option :value="$carId">{{ ucfirst($carId) }}</flux:select.option>
+            <flux:button
+                wire:click="selectCar('{{ $carId }}')"
+                :variant="$car === $carId ? 'primary' : 'filled'"
+            >{{ ucfirst($carId) }}</flux:button>
         @endforeach
-    </flux:select>
+    </flux:button.group>
 
     <flux:card>
         <flux:table>
