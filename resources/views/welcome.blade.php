@@ -27,7 +27,7 @@
                 </h1>
 
                 <p class="text-lg text-zinc-500 dark:text-zinc-400 text-center max-w-xs">
-                    Your solar energy at a glance.
+                    Your solar energy at a glance
                 </p>
             </div>
 
