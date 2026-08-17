@@ -47,6 +47,11 @@ class extends Component {
         $charge->delete();
     }
 
+    public function delete(int $id): void
+    {
+        CarCharge::findOrFail($id)->delete();
+    }
+
     public function rendering($view)
     {
         $query = CarCharge::orderBy('date', 'desc');
@@ -108,9 +113,12 @@ class extends Component {
                         <flux:table.cell>{{ ucfirst($charge->car_id) }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($charge->charged) }}</flux:table.cell>
                         <flux:table.cell>
-                            @if ($mergeableIds->contains($charge->id))
-                                <flux:button size="xs" icon="arrow-up" wire:click="merge({{ $charge->id }})" wire:confirm="{{ __('Merge this charge into the next one?') }}" />
-                            @endif
+                            <div class="flex items-center justify-end gap-1">
+                                @if ($mergeableIds->contains($charge->id))
+                                    <flux:button size="xs" icon="arrow-up" wire:click="merge({{ $charge->id }})" wire:confirm="{{ __('Merge this charge into the next one?') }}" />
+                                @endif
+                                <flux:button size="xs" variant="danger" icon="trash" wire:click="delete({{ $charge->id }})" wire:confirm="{{ __('Delete this charge?') }}" />
+                            </div>
                         </flux:table.cell>
                     </flux:table.row>
                 @endforeach
