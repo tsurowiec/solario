@@ -68,8 +68,9 @@ readonly class UsageSummary
         $offPeakAmount = self::OFF_PEAK_RATE * $this->offPeakPayable;
         $this->amount = $peakAmount + $offPeakAmount;
         $this->pricePerUnit = $this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0;
-        $this->paidRatio = ($this->peakPayable + $this->offPeakPayable) < 0 ? 0.0 : ($this->peakPayable + $this->offPeakPayable) / $this->totalUsage;
-        $this->sunRatio = 1 - $this->paidRatio;
+        $payable = $this->peakPayable + $this->offPeakPayable;
+        $this->paidRatio = ($this->totalUsage <= 0 || $payable < 0) ? 0.0 : $payable / $this->totalUsage;
+        $this->sunRatio = $this->totalUsage > 0 ? 1 - $this->paidRatio : 0.0;
         $this->peakRatio = $this->paidRatio * $this->peakPayableRatio;
         $this->offPeakRatio = $this->paidRatio * $this->offPeakPayableRatio;
     }
