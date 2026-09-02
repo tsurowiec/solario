@@ -49,6 +49,12 @@ class extends Component {
                 </div>
             </div>
 
+            <livewire:usage-card
+                :label="$season->name"
+                :season="$season->id"
+                :key="'usage-'.$season->id"
+            />
+
             <div class="portrait:hidden flex flex-col gap-4">
                 <livewire:monthly-chart :season="$season->id" :key="'monthly-'.$season->id" />
                 <livewire:energy-split-chart :season="$season->id" :key="'split-'.$season->id" />
