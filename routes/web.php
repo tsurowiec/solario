@@ -17,6 +17,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('readings/create', 'pages::readings.create')->name('readings.create');
     Route::livewire('car-charges', 'pages::car-charges.index')->name('car-charges.index');
     Route::livewire('car-charges/create', 'pages::car-charges.create')->name('car-charges.create');
+    Route::livewire('seasons', 'pages::seasons.index')->name('seasons.index');
+    Route::livewire('seasons/create', 'pages::seasons.create')->name('seasons.create');
+    Route::livewire('seasons/{season}/edit', 'pages::seasons.edit')->name('seasons.edit');
 });
 
 require __DIR__.'/settings.php';

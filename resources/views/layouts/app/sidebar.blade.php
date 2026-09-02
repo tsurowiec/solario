@@ -23,6 +23,10 @@
                     <flux:sidebar.item icon="bolt" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
                         {{ __('Car Charges') }}
                     </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="calendar" :href="route('seasons.index')" :current="request()->routeIs('seasons.*')" wire:navigate>
+                        {{ __('Seasons') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Season extends Model
 {
+    protected $fillable = [
+        'name',
+        'starting_date',
+    ];
+
     protected $casts = [
         'starting_date' => 'date',
     ];
