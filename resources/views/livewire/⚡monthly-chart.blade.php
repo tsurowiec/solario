@@ -8,16 +8,26 @@ use Livewire\Component;
 
 new class extends Component {
 
+    public int $season = 0;
+
+    private function resolveSeason(): ?Season
+    {
+        return $this->season !== 0
+            ? Season::findOrFail($this->season)
+            : Season::orderByDesc('starting_date')->first();
+    }
+
     #[Computed]
     public function chartData(): array
     {
         $diff = app(ReadingDiff::class);
-        $season = Season::orderByDesc('starting_date')->first();
+        $season = $this->resolveSeason();
+        $lastReading = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
         $start = $season
             ? Carbon::parse($season->starting_date)->startOfMonth()
             : Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfMonth();
-        $last = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
-        $months = (int) $start->diffInMonths($last->copy()->startOfMonth());
+        $last = $season ? $season->endDate()->min($lastReading) : $lastReading;
+        $months = max(0, (int) $start->diffInMonths($last->copy()->startOfMonth()));
 
         $categories = [];
         $consumed = [];
@@ -44,7 +54,7 @@ new class extends Component {
     #[Computed]
     public function seasonName(): string
     {
-        return Season::orderByDesc('starting_date')->value('name') ?? __('Overview');
+        return $this->resolveSeason()?->name ?? __('Overview');
     }
 
 }; ?>

@@ -8,16 +8,26 @@ use Livewire\Component;
 
 new class extends Component {
 
+    public int $season = 0;
+
+    private function resolveSeason(): ?Season
+    {
+        return $this->season !== 0
+            ? Season::findOrFail($this->season)
+            : Season::orderByDesc('starting_date')->first();
+    }
+
     #[Computed]
     public function chartData(): array
     {
         $diff = app(ReadingDiff::class);
-        $season = Season::orderByDesc('starting_date')->first();
+        $season = $this->resolveSeason();
         $start = $season
             ? Carbon::parse($season->starting_date)->startOfMonth()
             : Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfMonth();
         $lastReading = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
-        $months = (int) $start->diffInMonths($lastReading->copy()->startOfMonth());
+        $lastReading = $season ? $season->endDate()->min($lastReading) : $lastReading;
+        $months = max(0, (int) $start->diffInMonths($lastReading->copy()->startOfMonth()));
 
         $categories = [];
         $monthly    = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => [], 'peakKwh' => [], 'offPeakKwh' => [], 'sunKwh' => []];
