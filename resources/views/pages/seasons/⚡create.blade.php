@@ -12,6 +12,9 @@ class extends Component {
 
     public string $name = '';
     public string $starting_date = '';
+    public float $peak_rate = 1.40;
+    public float $off_peak_rate = 0.70;
+    public float $fed_in_ratio = 0.80;
 
     public function mount(): void
     {
@@ -23,6 +26,9 @@ class extends Component {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
             'starting_date' => ['required', 'date', $this->uniqueDate()],
+            'peak_rate'     => ['required', 'numeric', 'min:0'],
+            'off_peak_rate' => ['required', 'numeric', 'min:0'],
+            'fed_in_ratio'  => ['required', 'numeric', 'min:0'],
         ]);
 
         Season::create($validated);
@@ -72,6 +78,12 @@ class extends Component {
             <flux:card>
                 <flux:input :label="__('Starting Date')" type="text" id="starting-date-picker" required />
                 <flux:error name="starting_date" />
+            </flux:card>
+
+            <flux:card class="space-y-5">
+                <flux:input wire:model="peak_rate" :label="__('Peak Rate (PLN/kWh)')" type="number" step="0.01" min="0" required />
+                <flux:input wire:model="off_peak_rate" :label="__('Off-Peak Rate (PLN/kWh)')" type="number" step="0.01" min="0" required />
+                <flux:input wire:model="fed_in_ratio" :label="__('Fed-In Ratio')" type="number" step="0.01" min="0" required />
             </flux:card>
 
             <flux:button variant="primary" type="submit">

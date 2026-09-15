@@ -6,12 +6,6 @@ use Carbon\Carbon;
 
 readonly class UsageSummary
 {
-    private const PEAK_RATE = 1.40;
-
-    private const OFF_PEAK_RATE = 0.70;
-
-    private const FED_IN_RATIO = 0.80;
-
     public int $autoConsumed;
 
     public float $autoConsumedRatio;
@@ -50,6 +44,9 @@ readonly class UsageSummary
         public int $offPeakConsumed,
         public int $peakFedIn,
         public int $offPeakFedIn,
+        private float $peakRate = 1.40,
+        private float $offPeakRate = 0.70,
+        private float $fedInRatio = 0.80,
     ) {
         $this->autoConsumed = $pvGenerated - $peakFedIn - $offPeakFedIn;
         $this->autoConsumedRatio = $pvGenerated > 0 ? $this->autoConsumed / $pvGenerated * 100 : 0;
@@ -57,15 +54,15 @@ readonly class UsageSummary
         $this->fedIn = $peakFedIn + $offPeakFedIn;
         $this->totalUsage = $this->consumed + $this->autoConsumed;
 
-        $this->peakPayable = $peakConsumed - self::FED_IN_RATIO * $peakFedIn;
-        $this->offPeakPayable = $this->offPeakConsumed - self::FED_IN_RATIO * $this->offPeakFedIn;
+        $this->peakPayable = $peakConsumed - $this->fedInRatio * $peakFedIn;
+        $this->offPeakPayable = $this->offPeakConsumed - $this->fedInRatio * $this->offPeakFedIn;
         $clampedPeak = max(0, $this->peakPayable);
         $clampedOffPeak = max(0, $this->offPeakPayable);
         $clampedTotal = $clampedPeak + $clampedOffPeak;
         $this->peakPayableRatio = $clampedTotal > 0 ? $clampedPeak / $clampedTotal : 0.0;
         $this->offPeakPayableRatio = $clampedTotal > 0 ? $clampedOffPeak / $clampedTotal : 0.0;
-        $peakAmount = self::PEAK_RATE * $this->peakPayable;
-        $offPeakAmount = self::OFF_PEAK_RATE * $this->offPeakPayable;
+        $peakAmount = $this->peakRate * $this->peakPayable;
+        $offPeakAmount = $this->offPeakRate * $this->offPeakPayable;
         $this->amount = $peakAmount + $offPeakAmount;
         $this->pricePerUnit = $this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0;
         $payable = $this->peakPayable + $this->offPeakPayable;

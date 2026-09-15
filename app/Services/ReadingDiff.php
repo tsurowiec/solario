@@ -23,7 +23,7 @@ class ReadingDiff
             return null;
         }
 
-        return $this->between($from, $to);
+        return $this->between($from, $to, Season::activeOn($to));
     }
 
     public function month(Carbon $date): ?UsageSummary
@@ -38,7 +38,7 @@ class ReadingDiff
             return null;
         }
 
-        return $this->between($from, $to);
+        return $this->between($from, $to, Season::activeOn($to));
     }
 
     public function season(Season $season): ?UsageSummary
@@ -53,27 +53,51 @@ class ReadingDiff
             return null;
         }
 
-        return $this->between($from, $to);
+        return $this->between($from, $to, $season);
     }
 
     public function day(Carbon $date): UsageSummary
     {
-        return $this->between($date->copy()->subDay(), $date);
+        return $this->between($date->copy()->subDay(), $date, Season::activeOn($date));
     }
 
-    public function between(Carbon $from, Carbon $to): UsageSummary
+    public function between(Carbon $from, Carbon $to, ?Season $season = null): UsageSummary
     {
+        $rates = $season ? [
+            'peakRate' => $season->peak_rate,
+            'offPeakRate' => $season->off_peak_rate,
+            'fedInRatio' => $season->fed_in_ratio,
+        ] : [];
+
+        if (Reading::doesntExist()) {
+            return new UsageSummary(
+                ...[
+                    'from' => $from->toDateString(),
+                    'to' => $to->toDateString(),
+                    'pvGenerated' => 0,
+                    'peakConsumed' => 0,
+                    'offPeakConsumed' => 0,
+                    'peakFedIn' => 0,
+                    'offPeakFedIn' => 0,
+                    ...$rates,
+                ]
+            );
+        }
+
         $a = $this->interpolator->forDate($from);
         $b = $this->interpolator->forDate($to);
 
         return new UsageSummary(
-            from: $from->toDateString(),
-            to: $to->toDateString(),
-            pvGenerated: $b['pv_generated'] - $a['pv_generated'],
-            peakConsumed: $b['peak_consumed'] - $a['peak_consumed'],
-            offPeakConsumed: $b['off_peak_consumed'] - $a['off_peak_consumed'],
-            peakFedIn: $b['peak_fed_in'] - $a['peak_fed_in'],
-            offPeakFedIn: $b['off_peak_fed_in'] - $a['off_peak_fed_in'],
+            ...[
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'pvGenerated' => $b['pv_generated'] - $a['pv_generated'],
+                'peakConsumed' => $b['peak_consumed'] - $a['peak_consumed'],
+                'offPeakConsumed' => $b['off_peak_consumed'] - $a['off_peak_consumed'],
+                'peakFedIn' => $b['peak_fed_in'] - $a['peak_fed_in'],
+                'offPeakFedIn' => $b['off_peak_fed_in'] - $a['off_peak_fed_in'],
+                ...$rates,
+            ]
         );
     }
 }
