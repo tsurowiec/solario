@@ -74,9 +74,12 @@ class extends Component {
                         <flux:table.cell>{{ number_format($reading->peak_fed_in) }}</flux:table.cell>
                         <flux:table.cell>{{ number_format($reading->off_peak_fed_in) }}</flux:table.cell>
                         <flux:table.cell>
-                            @unless ($undeletableIds->contains($reading->id))
-                                <flux:button variant="danger" size="xs" icon="trash" wire:click="delete({{ $reading->id }})" wire:confirm="{{ __('Are you sure you want to delete this reading?') }}" />
-                            @endunless
+                            <div class="flex items-center gap-1">
+                                <flux:button size="xs" icon="pencil" href="{{ route('readings.edit', $reading) }}" wire:navigate />
+                                @unless ($undeletableIds->contains($reading->id))
+                                    <flux:button variant="danger" size="xs" icon="trash" wire:click="delete({{ $reading->id }})" wire:confirm="{{ __('Are you sure you want to delete this reading?') }}" />
+                                @endunless
+                            </div>
                         </flux:table.cell>
                     </flux:table.row>
                 @endforeach

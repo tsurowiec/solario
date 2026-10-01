@@ -15,6 +15,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::livewire('readings', 'pages::readings.index')->name('readings.index');
     Route::livewire('readings/create', 'pages::readings.create')->name('readings.create');
+    Route::livewire('readings/{reading}/edit', 'pages::readings.edit')->name('readings.edit');
     Route::livewire('car-charges', 'pages::car-charges.index')->name('car-charges.index');
     Route::livewire('car-charges/create', 'pages::car-charges.create')->name('car-charges.create');
     Route::livewire('seasons', 'pages::seasons.index')->name('seasons.index');
