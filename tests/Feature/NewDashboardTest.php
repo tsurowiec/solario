@@ -16,6 +16,13 @@ class NewDashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
+    public function test_home_redirects_authenticated_users_to_the_new_dashboard(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('home'))->assertRedirect(route('new.dashboard'));
+    }
+
     public function test_dashboard_has_no_action_buttons(): void
     {
         $this->actingAs(User::factory()->create());

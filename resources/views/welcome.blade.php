@@ -32,7 +32,7 @@
             </div>
 
             @auth
-                <flux:button href="{{ route('dashboard') }}" variant="primary">
+                <flux:button href="{{ route('new.dashboard') }}" variant="primary">
                     Go to Dashboard
                 </flux:button>
             @else
