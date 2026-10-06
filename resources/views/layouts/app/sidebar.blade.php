@@ -16,6 +16,19 @@
                     <flux:sidebar.item icon="home" :href="route('new.dashboard')" :current="request()->routeIs('new.dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="list-bullet" :href="route('new.readings.index')" :current="request()->routeIs('new.readings.*', 'new.pv-inverter.edit')" wire:navigate>
+                        {{ __('Readings') }}
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="banknotes" :href="route('new.prices.index')" :current="request()->routeIs('new.prices.*')" wire:navigate>
+                        {{ __('Prices') }}
+                    </flux:sidebar.item>
+
+                    {{-- Legacy feature, linked until car charges are rebuilt (see AGENTS.md) --}}
+                    <flux:sidebar.item icon="bolt" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
+                        {{ __('Car Charges') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Old')" class="grid">
