@@ -47,6 +47,15 @@ readonly class EnergySummary
     /** Amount ÷ total usage (PLN/kWh); null without prices. */
     public ?float $pricePerUnit;
 
+    /** @var array<string, float|null> PLN per car (kWh charged × price per kWh); null without prices. */
+    public array $carAmounts;
+
+    /** kWh used by the household: total usage − all car charges. */
+    public float $householdUsage;
+
+    /** PLN for the household: amount − all car amounts; null without prices. */
+    public ?float $householdAmount;
+
     /**
      * @param  string  $from  first day included (Y-m-d)
      * @param  string  $to  last day included (Y-m-d)
@@ -59,6 +68,7 @@ readonly class EnergySummary
      * @param  float  $offPeakBalancedConsumed  kWh taken from the grid in T2 after hourly balancing
      * @param  float  $offPeakBalancedFedIn  kWh sent to the grid in T2 after hourly balancing
      * @param  Price|null  $price  prices for the month (prices only change at the start of a month)
+     * @param  array<string, float>  $carUsage  kWh charged per car id
      */
     public function __construct(
         public string $from,
@@ -72,6 +82,7 @@ readonly class EnergySummary
         public float $offPeakBalancedConsumed = 0.0,
         public float $offPeakBalancedFedIn = 0.0,
         ?Price $price = null,
+        public array $carUsage = [],
     ) {
         $this->days = (int) Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1;
         $this->consumed = $peakConsumed + $offPeakConsumed;
@@ -92,6 +103,10 @@ readonly class EnergySummary
 
         $this->amount = $price ? $this->amount($price) : null;
         $this->pricePerUnit = $price ? ($this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0) : null;
+
+        $this->carAmounts = array_map(fn (float $kWh) => $price ? $kWh * $this->pricePerUnit : null, $carUsage);
+        $this->householdUsage = $this->totalUsage - array_sum($carUsage);
+        $this->householdAmount = $price ? $this->amount - array_sum($this->carAmounts) : null;
     }
 
     private function amount(Price $price): float

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Data\EnergySummary;
+use App\Models\CarCharge;
 use App\Models\MeterDailyReading;
 use App\Models\Price;
 use App\Models\PvInverterReading;
@@ -76,6 +77,25 @@ class EnergyUsage
             offPeakBalancedConsumed: $days->sum('t2_balanced_consumed'),
             offPeakBalancedFedIn: $days->sum('t2_balanced_fed_in'),
             price: Price::activeOn($from),
+            carUsage: $this->carUsage($from, $to),
         );
+    }
+
+    /**
+     * kWh charged per car in the period (every car in CarCharge::CARS, 0 when none).
+     *
+     * @return array<string, float>
+     */
+    private function carUsage(Carbon $from, Carbon $to): array
+    {
+        $charged = CarCharge::whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
+            ->selectRaw('car_id, sum(charged) as kwh')
+            ->groupBy('car_id')
+            ->pluck('kwh', 'car_id');
+
+        return collect(CarCharge::CARS)
+            ->mapWithKeys(fn (string $car) => [$car => (float) ($charged[$car] ?? 0)])
+            ->all();
     }
 }

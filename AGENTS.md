@@ -38,6 +38,6 @@ The application is being rebuilt incrementally using a side-by-side approach:
 | Seasons | `pages::seasons.*` | — | legacy |
 | Pricing (replaces `Season` rates: `peak_rate`, `off_peak_rate`, `fed_in_ratio`) | `Season` rate fields, `UsageSummary` cost fields | `Price` model (`Price::activeOn()`), `pages::new.prices.*`, `<x-new.price-card>` | new available |
 
-> **Known legacy dependencies:** the new dashboard's "Add car charge" button links to the legacy `car-charges.create` route, and the `New` sidebar group has a "Car Charges" link to the legacy `car-charges.index`. Retarget both when car charges are rebuilt.
+> **Known legacy dependencies:** the new dashboard's "Add car charge" button links to the legacy `car-charges.create` route, and the `New` sidebar group has a "Car Charges" link to the legacy `car-charges.index`. `EnergyUsage` (new month card) reads the `CarCharge` model and `CarCharge::CARS` directly (not the legacy `CarChargeUsage` service). Retarget all of these when car charges are rebuilt.
 
 Status values: `legacy` → `building` (new code exists, not yet usable from the sidebar) → `new available` (entries in both `Old` and `New` groups) → `removed`.

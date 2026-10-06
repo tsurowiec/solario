@@ -31,6 +31,7 @@ new class extends Component {
     $d = $this->usage;
     $from = Carbon::parse($d->from);
     $to = Carbon::parse($d->to);
+    $carColors = ['tesia' => 'text-zinc-400', 'tessy' => 'text-red-400'];
 ?>
 <flux:card x-data="{ daily: false }">
     <div class="flex items-center justify-between mb-6">
@@ -69,6 +70,21 @@ new class extends Component {
             <x-new.stat icon="sun" color="text-blue-400" :value="number_format($d->peakPayable, 1)" unit="kWh" :note="$d->peakSurplus > 0 ? number_format(-$d->peakSurplus, 1) : null" />
             <x-new.stat icon="moon" color="text-blue-400" :value="number_format($d->offPeakPayable, 1)" unit="kWh" :note="$d->offPeakSurplus > 0 ? number_format(-$d->offPeakSurplus, 1) : null" />
         </div>
+
+        @foreach ($d->carUsage as $car => $kWh)
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <x-new.stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($kWh, 1)" unit="kWh" />
+                @if ($d->amount !== null)
+                    <x-new.stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carAmounts[$car], 2)" unit="PLN" />
+                @endif
+            </div>
+        @endforeach
+        <div class="grid grid-cols-2 gap-2 mt-4">
+            <x-new.stat icon="home" color="text-zinc-400" :value="number_format($d->householdUsage, 1)" unit="kWh" />
+            @if ($d->amount !== null)
+                <x-new.stat icon="home" color="text-zinc-400" :value="number_format($d->householdAmount, 2)" unit="PLN" />
+            @endif
+        </div>
     </div>
 
     <div x-show="daily" x-cloak>
@@ -96,6 +112,21 @@ new class extends Component {
         <div class="grid grid-cols-2 gap-2">
             <x-new.stat icon="sun" color="text-blue-400" :value="number_format($d->peakPayablePercent, 1)" unit="%" />
             <x-new.stat icon="moon" color="text-blue-400" :value="number_format($d->offPeakPayablePercent, 1)" unit="%" />
+        </div>
+
+        @foreach ($d->carUsage as $car => $kWh)
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <x-new.stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($kWh / $d->days, 1)" unit="kWh/d" />
+                @if ($d->amount !== null)
+                    <x-new.stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carAmounts[$car] / $d->days, 2)" unit="PLN/d" />
+                @endif
+            </div>
+        @endforeach
+        <div class="grid grid-cols-2 gap-2 mt-4">
+            <x-new.stat icon="home" color="text-zinc-400" :value="number_format($d->householdUsage / $d->days, 1)" unit="kWh/d" />
+            @if ($d->amount !== null)
+                <x-new.stat icon="home" color="text-zinc-400" :value="number_format($d->householdAmount / $d->days, 2)" unit="PLN/d" />
+            @endif
         </div>
     </div>
 </flux:card>

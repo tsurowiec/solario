@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CarCharge;
 use App\Models\MeterDailyReading;
 use App\Models\Price;
 use App\Models\PvInverterReading;
@@ -122,6 +123,39 @@ class NewEnergyUsageTest extends TestCase
         Livewire::test('new.month-card', ['month' => '2026-10-01'])
             ->assertSee(number_format($d->amount, 2))
             ->assertSee('PLN/kWh');
+    }
+
+    public function test_cars_and_household_split_usage_and_amount(): void
+    {
+        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        CarCharge::create(['date' => '2026-10-01', 'car_id' => 'tesia', 'charged' => 10]);
+        CarCharge::create(['date' => '2026-10-02', 'car_id' => 'tesia', 'charged' => 5]);
+        CarCharge::create(['date' => '2026-10-03', 'car_id' => 'tesia', 'charged' => 99]);  // outside the period (1–2 Oct)
+        CarCharge::create(['date' => '2026-09-30', 'car_id' => 'tessy', 'charged' => 99]);  // outside the period
+
+        $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
+
+        $this->assertSame(['tesia' => 15.0, 'tessy' => 0.0], $d->carUsage);
+        $this->assertEqualsWithDelta(15 * $d->pricePerUnit, $d->carAmounts['tesia'], 0.000001);
+        $this->assertSame(0.0, $d->carAmounts['tessy']);
+        $this->assertEqualsWithDelta($d->totalUsage - 15, $d->householdUsage, 0.000001);
+        $this->assertEqualsWithDelta($d->amount - $d->carAmounts['tesia'], $d->householdAmount, 0.000001);
+
+        Livewire::test('new.month-card', ['month' => '2026-10-01'])
+            ->assertSee(number_format($d->carAmounts['tesia'], 2))
+            ->assertSee(number_format($d->householdAmount, 2));
+    }
+
+    public function test_without_prices_cars_and_household_show_only_kwh(): void
+    {
+        CarCharge::create(['date' => '2026-10-01', 'car_id' => 'tessy', 'charged' => 7]);
+
+        $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
+
+        $this->assertSame(['tesia' => 0.0, 'tessy' => 7.0], $d->carUsage);
+        $this->assertSame(['tesia' => null, 'tessy' => null], $d->carAmounts);
+        $this->assertNull($d->householdAmount);
+        $this->assertEqualsWithDelta($d->totalUsage - 7, $d->householdUsage, 0.000001);
     }
 
     public function test_prices_of_the_month_are_used(): void
