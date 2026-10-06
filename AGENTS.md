@@ -9,6 +9,12 @@ The application is being rebuilt incrementally using a side-by-side approach:
 1. **Add** — the new version of a feature is built *next to* the existing one and gets its **own sidebar entry in the `New` group** (`resources/views/layouts/app/sidebar.blade.php`), so it is usable from day one. The old feature and its entry in the `Old` group stay untouched.
 2. **Remove** — once the new feature fully covers the old one, the old feature (its `Old` sidebar entry, routes, views, Livewire components, services, tests) is deleted in a separate, dedicated step.
 
+### Where new code goes
+
+- Pages: `resources/views/pages/new/` (Livewire `pages::new.*`)
+- Routes: URL prefix `new/`, route names `new.*`
+- Tests: separate test classes (e.g. `NewDashboardTest`), never mixed into legacy test files
+
 ### Rules for agents
 
 - **Do not modify legacy code while building a new feature.** If the new feature needs shared logic, copy or extract it rather than changing old behavior. Bug fixes to legacy code only when explicitly asked.
@@ -23,9 +29,12 @@ The application is being rebuilt incrementally using a side-by-side approach:
 
 | Feature | Legacy location | New location | Status |
 |---------|-----------------|--------------|--------|
-| Dashboard | `dashboard.blade.php`, `livewire/⚡*-card`, `⚡*-chart` | — | legacy |
-| Readings | `pages::readings.*` | — | legacy |
+| Dashboard | `dashboard.blade.php`, `livewire/⚡*-card`, `⚡*-chart` | `pages::new.dashboard` (`/new/dashboard`) | new available |
+| Readings (grid side: consumed / fed-in) | `pages::readings.*` | `MeterDailyReading` model, `MeterCsvImporter`, `pages::new.meter-import.create` | new available |
+| PV inverter data (replaces `pv_generated` of Readings) | `pages::readings.create` (PV Generated field) | `PvInverterReading` model, `pages::new.pv-inverter.create` | new available |
 | Car charges | `pages::car-charges.*` | — | legacy |
 | Seasons | `pages::seasons.*` | — | legacy |
+
+> **Known legacy dependency:** the new dashboard's "Add car charge" button links to the legacy `car-charges.create` route. Retarget it when car charges are rebuilt.
 
 Status values: `legacy` → `new available` (entries in both `Old` and `New` groups) → `removed`.

@@ -1,0 +1,36 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('meter_daily_readings', function (Blueprint $table) {
+            $table->id();
+            $table->date('date')->unique();
+            $table->decimal('t1_consumed', 10, 3);
+            $table->decimal('t1_fed_in', 10, 3);
+            $table->decimal('t1_balanced_consumed', 10, 3);
+            $table->decimal('t1_balanced_fed_in', 10, 3);
+            $table->decimal('t2_consumed', 10, 3);
+            $table->decimal('t2_fed_in', 10, 3);
+            $table->decimal('t2_balanced_consumed', 10, 3);
+            $table->decimal('t2_balanced_fed_in', 10, 3);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('meter_daily_readings');
+    }
+};

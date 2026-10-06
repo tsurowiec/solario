@@ -21,6 +21,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('seasons', 'pages::seasons.index')->name('seasons.index');
     Route::livewire('seasons/create', 'pages::seasons.create')->name('seasons.create');
     Route::livewire('seasons/{season}/edit', 'pages::seasons.edit')->name('seasons.edit');
+
+    Route::livewire('new/dashboard', 'pages::new.dashboard')->name('new.dashboard');
+    Route::livewire('new/meter-import', 'pages::new.meter-import.create')->name('new.meter-import.create');
+    Route::livewire('new/pv-inverter/create', 'pages::new.pv-inverter.create')->name('new.pv-inverter.create');
 });
 
 require __DIR__.'/settings.php';

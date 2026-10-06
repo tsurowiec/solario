@@ -13,6 +13,9 @@
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('New')" class="grid">
                     {{-- Rebuilt features go here (see AGENTS.md) --}}
+                    <flux:sidebar.item icon="home" :href="route('new.dashboard')" :current="request()->routeIs('new.dashboard')" wire:navigate>
+                        {{ __('Dashboard') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Old')" class="grid">
