@@ -26,15 +26,11 @@ Domain data is returned as readonly VOs from `app/Data/`. Use camelCase public p
 
 ### Services
 - `ReadingInterpolator` — always returns an array (internal, not exposed as VO)
-- `ReadingDiff` — returns `UsageSummary` VO; use `->month()`, `->day()`, or `->between()`
-- `PriceCalculator` — accepts `UsageSummary`, returns `float` (PLN)
+- `ReadingDiff` — returns `UsageSummary` VO; use `->day()`, `->month()`, `->year()`, `->season()`, or `->between()`. Passes the rates of the relevant `Season` into the VO
+- `CarChargeUsage` — returns charged kWh (`int`) for a car; use `->month()`, `->year()`, `->season()`, or `->between()`
 
-### Tariff constants (PriceCalculator)
-| Constant | Value |
-|----------|-------|
-| `PEAK_RATE` | 1.40 PLN/kWh |
-| `OFF_PEAK_RATE` | 0.70 PLN/kWh |
-| `FED_IN_RATIO` | 0.80 |
+### Pricing (per season)
+Tariff rates are stored per `Season` (`peak_rate`, `off_peak_rate`, `fed_in_ratio`). `Season::activeOn($date)` returns the season that applies to a date (the latest one that has started by then). Costs (`amount`, `pricePerUnit`, payable values) are calculated in the `UsageSummary` constructor. When no season applies, the VO falls back to its defaults: 1.40 / 0.70 PLN/kWh, fed-in ratio 0.80.
 
 ### Date handling
 Always use local date components (never `toISOString()` in JS) to avoid UTC offset issues. In JS: `getFullYear()` / `getMonth()` / `getDate()`.
