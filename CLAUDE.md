@@ -41,3 +41,9 @@ Always use local date components (never `toISOString()` in JS) to avoid UTC offs
 
 ### Code style
 Pint with default Laravel ruleset. Run `composer lint` before committing.
+
+## Rebuild in progress
+
+The app is being rebuilt side by side (new features next to old ones, then the old ones are removed). Read and follow:
+
+@AGENTS.md
