@@ -44,6 +44,9 @@ readonly class EnergySummary
      */
     public ?float $amount;
 
+    /** Amount projected to the whole month (amount ÷ days × days in month); null without prices or when the period covers the full month. */
+    public ?float $estimatedAmount;
+
     /** Amount ÷ total usage (PLN/kWh); null without prices. */
     public ?float $pricePerUnit;
 
@@ -102,6 +105,8 @@ readonly class EnergySummary
         $this->offPeakPayablePercent = 100 - $this->peakPayablePercent;
 
         $this->amount = $price ? $this->amount($price) : null;
+        $daysInMonth = Carbon::parse($from)->daysInMonth;
+        $this->estimatedAmount = $price && $this->days < $daysInMonth ? $this->amount / $this->days * $daysInMonth : null;
         $this->pricePerUnit = $price ? ($this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0) : null;
 
         $this->carAmounts = array_map(fn (float $kWh) => $price ? $kWh * $this->pricePerUnit : null, $carUsage);

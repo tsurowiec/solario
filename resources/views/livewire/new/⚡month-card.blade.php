@@ -62,7 +62,7 @@ new class extends Component {
 
         @if ($d->amount !== null)
             <div class="grid grid-cols-2 gap-2 mb-4">
-                <x-new.stat icon="banknotes" color="text-blue-400" :value="number_format($d->amount, 2)" unit="PLN" />
+                <x-new.stat icon="banknotes" color="text-blue-400" :value="number_format($d->amount, 2)" unit="PLN" :note="$d->estimatedAmount !== null ? '~'.number_format($d->estimatedAmount, 2) : null" />
                 <x-new.stat icon="tag" color="text-blue-400" :value="number_format($d->pricePerUnit, 2)" unit="PLN/kWh" />
             </div>
         @endif

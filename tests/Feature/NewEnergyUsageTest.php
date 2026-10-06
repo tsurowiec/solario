@@ -158,6 +158,32 @@ class NewEnergyUsageTest extends TestCase
         $this->assertEqualsWithDelta($d->totalUsage - 7, $d->householdUsage, 0.000001);
     }
 
+    public function test_partial_month_shows_an_estimate_for_the_whole_month(): void
+    {
+        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+
+        $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);   // 2 of 31 days
+
+        $this->assertEqualsWithDelta($d->amount / 2 * 31, $d->estimatedAmount, 0.000001);
+
+        Livewire::test('new.month-card', ['month' => '2026-10-01'])
+            ->assertSee('(~'.number_format($d->estimatedAmount, 2).')');
+    }
+
+    public function test_full_month_has_no_estimate(): void
+    {
+        Price::create(['since' => '2026-09-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        PvInverterReading::create(['date' => '2026-08-31', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1300]);
+        $this->meterDays('2026-09-01', '2026-09-30');
+
+        $d = $this->month('2026-09-01');
+
+        $this->assertSame(30, $d->days);
+        $this->assertNotNull($d->amount);
+        $this->assertNull($d->estimatedAmount);
+    }
+
     public function test_prices_of_the_month_are_used(): void
     {
         Price::create(['since' => '2026-09-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 1)]);
