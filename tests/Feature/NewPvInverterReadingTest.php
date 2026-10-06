@@ -26,9 +26,9 @@ class NewPvInverterReadingTest extends TestCase
         $this->get(route('new.pv-inverter.create'))->assertRedirect(route('login'));
     }
 
-    public function test_dashboard_links_to_the_form(): void
+    public function test_readings_page_links_to_the_form(): void
     {
-        $this->get(route('new.dashboard'))->assertSee(route('new.pv-inverter.create'));
+        $this->get(route('new.readings.index'))->assertSee(route('new.pv-inverter.create'));
     }
 
     public function test_reading_is_saved(): void
@@ -38,7 +38,7 @@ class NewPvInverterReadingTest extends TestCase
             ->set('value', 1234)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('new.dashboard'));
+            ->assertRedirect(route('new.readings.index'));
 
         $this->assertDatabaseHas('pv_inverter_readings', ['value' => 1234]);
         $this->assertSame('2026-10-06', PvInverterReading::first()->date->toDateString());

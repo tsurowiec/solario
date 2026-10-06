@@ -35,9 +35,9 @@ class NewMeterImportTest extends TestCase
         $this->get(route('new.meter-import.create'))->assertRedirect(route('login'));
     }
 
-    public function test_dashboard_links_to_the_import(): void
+    public function test_readings_page_links_to_the_import(): void
     {
-        $this->get(route('new.dashboard'))->assertSee(route('new.meter-import.create'));
+        $this->get(route('new.readings.index'))->assertSee(route('new.meter-import.create'));
     }
 
     public function test_hourly_rows_are_summed_per_day_zone_and_type(): void

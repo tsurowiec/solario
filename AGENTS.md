@@ -34,10 +34,10 @@ The application is being rebuilt incrementally using a side-by-side approach:
 | Dashboard | `dashboard.blade.php`, `livewire/⚡*-card`, `⚡*-chart` | `pages::new.dashboard` (`/new/dashboard`) | new available |
 | Readings (grid side: consumed / fed-in) | `pages::readings.*` | `MeterDailyReading` model, `MeterCsvImporter`, `pages::new.meter-import.create`, `pages::new.readings.index` | new available |
 | PV inverter data (replaces `pv_generated` of Readings) | `pages::readings.create` (PV Generated field) | `PvInverterReading` model, `pages::new.pv-inverter.create` / `.edit` | new available |
-| Car charges | `pages::car-charges.*` | — | legacy |
+| Car charges | `pages::car-charges.*` | `pages::new.car-charges.index` / `.create` / `.edit` | new available |
 | Seasons | `pages::seasons.*` | — | legacy |
 | Pricing (replaces `Season` rates: `peak_rate`, `off_peak_rate`, `fed_in_ratio`) | `Season` rate fields, `UsageSummary` cost fields | `Price` model (`Price::activeOn()`), `pages::new.prices.*`, `<x-new.price-card>` | new available |
 
-> **Known legacy dependencies:** the new dashboard's "Add car charge" button links to the legacy `car-charges.create` route, and the `New` sidebar group has a "Car Charges" link to the legacy `car-charges.index`. `EnergyUsage` (new month card) reads the `CarCharge` model and `CarCharge::CARS` directly (not the legacy `CarChargeUsage` service). Retarget all of these when car charges are rebuilt.
+> **Known legacy dependency:** `EnergyUsage` (new month card) reads the `CarCharge` model and `CarCharge::CARS` directly (not the legacy `CarChargeUsage` service). Both old and new car charge pages share this model.
 
 Status values: `legacy` → `building` (new code exists, not yet usable from the sidebar) → `new available` (entries in both `Old` and `New` groups) → `removed`.

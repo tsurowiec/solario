@@ -16,16 +16,14 @@ class NewDashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_see_the_action_buttons(): void
+    public function test_dashboard_has_no_action_buttons(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs(User::factory()->create());
 
-        $response = $this->get(route('new.dashboard'));
-        $response->assertOk()
-            ->assertSee('Import meter data')
-            ->assertSee('Add car charge')
-            ->assertSee('PV inverter data')
-            ->assertSee(route('car-charges.create'));
+        $this->get(route('new.dashboard'))
+            ->assertOk()
+            ->assertDontSee(route('new.meter-import.create'))
+            ->assertDontSee(route('new.pv-inverter.create'))
+            ->assertDontSee(route('new.car-charges.create'));
     }
 }

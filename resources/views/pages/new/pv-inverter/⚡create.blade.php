@@ -64,7 +64,7 @@ class extends Component {
 
         Flux::toast(variant: 'success', text: __('PV inverter reading saved.'));
 
-        $this->redirect(route('new.dashboard'), navigate: true);
+        $this->redirect(route('new.readings.index'), navigate: true);
     }
 
 }; ?>

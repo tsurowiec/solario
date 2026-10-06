@@ -20,6 +20,7 @@ class NewReadingsTest extends TestCase
         parent::setUp();
 
         $this->actingAs(User::factory()->create());
+        $this->travelTo('2026-10-06');
     }
 
     public function test_guests_are_redirected_to_the_login_page(): void
@@ -37,10 +38,11 @@ class NewReadingsTest extends TestCase
         $this->meterDay('2026-10-05', 9.876);
 
         Livewire::test('pages::new.readings.index')
-            ->assertSeeInOrder(['Mon, 05 Oct 2026', 'Sun, 04 Oct 2026', 'Sat, 03 Oct 2026', 'Fri, 02 Oct 2026', 'Thu, 01 Oct 2026', 'Wed, 30 Sep 2026'])
+            ->assertSeeInOrder(['Mon, 05 Oct 2026', 'Sun, 04 Oct 2026', 'Sat, 03 Oct 2026', 'Fri, 02 Oct 2026', 'Thu, 01 Oct 2026'])
+            ->assertDontSee('Wed, 30 Sep 2026')   // previous month
             ->assertSee('9.876')           // meter values shown
             ->assertSee('1.234')
-            ->assertSee('1,040')           // actual PV reading
+            ->assertSee('1,040')           // actual PV counter reading
             ->assertSee('~1,020.0');       // interpolated PV counter on Oct 2
     }
 
@@ -53,14 +55,14 @@ class NewReadingsTest extends TestCase
         ]);
 
         Livewire::test('pages::new.readings.index')
-            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)', 'Measured', 'Balanced', 'Measured', 'Balanced', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'PV counter'])
+            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)', 'PV Production', 'Measured', 'Balanced', 'Measured', 'Balanced', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in'])
             ->assertSeeInOrder(['1.111', '2.222', '3.333', '4.444', '5.555', '6.666', '7.777', '8.888']);
     }
 
     public function test_only_actual_pv_readings_are_editable(): void
     {
-        $actual = PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
-        PvInverterReading::create(['date' => '2026-10-04', 'value' => 1040]);
+        PvInverterReading::create(['date' => '2026-10-01', 'value' => 1000]);
+        $actual = PvInverterReading::create(['date' => '2026-10-04', 'value' => 1040]);
 
         $response = Livewire::test('pages::new.readings.index');
 
@@ -68,18 +70,81 @@ class NewReadingsTest extends TestCase
         $this->assertSame(2, preg_match_all('~/new/pv-inverter/\d+/edit~', $response->html()));
     }
 
-    public function test_days_are_paginated_by_31(): void
+    public function test_shows_the_current_month_by_default_with_a_month_dropdown(): void
     {
-        PvInverterReading::create(['date' => '2026-01-01', 'value' => 0]);
-        PvInverterReading::create(['date' => '2026-03-31', 'value' => 900]);
+        PvInverterReading::create(['date' => '2026-08-01', 'value' => 0]);
+        PvInverterReading::create(['date' => '2026-10-31', 'value' => 900]);
 
         Livewire::test('pages::new.readings.index')
-            ->assertSee('Tue, 31 Mar 2026')
-            ->assertSee('Sun, 01 Mar 2026')
-            ->assertDontSee('Sat, 28 Feb 2026')
-            ->call('gotoPage', 2)
-            ->assertSee('Sat, 28 Feb 2026')
-            ->assertDontSee('Sun, 01 Mar 2026');
+            ->assertSet('month', '2026-10')
+            ->assertSeeInOrder(['October 2026', 'August 2026'])   // months with data (+ current)
+            ->assertSeeInOrder(['Sat, 31 Oct 2026', 'Thu, 01 Oct 2026'])
+            ->assertDontSee('Wed, 30 Sep 2026')
+            ->set('month', '2026-09')
+            ->assertSeeInOrder(['Wed, 30 Sep 2026', 'Tue, 01 Sep 2026'])
+            ->assertDontSee('Thu, 01 Oct 2026');
+    }
+
+    public function test_month_rows_stay_within_the_data_range(): void
+    {
+        PvInverterReading::create(['date' => '2026-10-03', 'value' => 0]);
+        $this->meterDay('2026-10-05', 1);
+
+        Livewire::test('pages::new.readings.index')
+            ->assertSee('Mon, 05 Oct 2026')
+            ->assertSee('Sat, 03 Oct 2026')
+            ->assertDontSee('Tue, 06 Oct 2026')
+            ->assertDontSee('Fri, 02 Oct 2026');
+    }
+
+    public function test_total_shows_pv_production_of_the_listed_days(): void
+    {
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-10-04', 'value' => 1040]);
+        $this->meterDay('2026-10-05', 1);
+
+        // Listed days: Oct 1–5. Counter Oct 5 can't be interpolated (no later reading) → no production.
+        Livewire::test('pages::new.readings.index')->assertSet('pvProduction', null);
+
+        PvInverterReading::create(['date' => '2026-10-10', 'value' => 1100]);
+
+        // Oct 1–10: 1100 − 1000 (Sep 30), both actual readings.
+        $component = Livewire::test('pages::new.readings.index');
+        $this->assertSame(['value' => 100.0, 'exact' => true], $component->instance()->pvProduction);
+        $component->assertSeeInOrder(['Total', '100.0']);
+    }
+
+    public function test_total_pv_production_is_marked_when_interpolated(): void
+    {
+        PvInverterReading::create(['date' => '2026-09-20', 'value' => 900]);
+        PvInverterReading::create(['date' => '2026-10-05', 'value' => 1050]);
+
+        // Oct 1–5: 1050 − interpolated Sep 30 (900 + 150 × 10/15 = 1000)
+        Livewire::test('pages::new.readings.index')
+            ->assertSeeInOrder(['Total', '~50.0']);
+    }
+
+    public function test_month_without_data_shows_a_message(): void
+    {
+        $this->meterDay('2026-08-05', 1);
+
+        Livewire::test('pages::new.readings.index')
+            ->assertSee('No readings in this month.')
+            ->assertDontSee('Total');
+    }
+
+    public function test_totals_sum_each_meter_column_of_the_month(): void
+    {
+        $this->meterDay('2026-09-30', 100);          // other month
+        MeterDailyReading::create([
+            'date' => '2026-10-01',
+            't1_consumed' => 1.111, 't1_fed_in' => 2.222, 't1_balanced_consumed' => 3.333, 't1_balanced_fed_in' => 4.444,
+            't2_consumed' => 5.555, 't2_fed_in' => 6.666, 't2_balanced_consumed' => 7.777, 't2_balanced_fed_in' => 8.888,
+        ]);
+        $this->meterDay('2026-10-03', 1);            // day 2 has no meter data
+
+        Livewire::test('pages::new.readings.index')
+            ->assertSeeInOrder(['Total', '2.111', '3.222', '4.333', '5.444', '6.555', '7.666', '8.777', '9.888']);
     }
 
     public function test_pv_reading_can_be_edited(): void

@@ -25,8 +25,7 @@
                         {{ __('Prices') }}
                     </flux:sidebar.item>
 
-                    {{-- Legacy feature, linked until car charges are rebuilt (see AGENTS.md) --}}
-                    <flux:sidebar.item icon="bolt" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
+                    <flux:sidebar.item icon="bolt" :href="route('new.car-charges.index')" :current="request()->routeIs('new.car-charges.*')" wire:navigate>
                         {{ __('Car Charges') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
