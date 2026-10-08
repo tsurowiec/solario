@@ -3,6 +3,7 @@
 use App\Models\CarCharge;
 use Flux\Flux;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -13,6 +14,7 @@ class extends Component {
     public CarCharge $charge;
 
     public string $date = '';
+    #[Locked]
     public string $car_id = '';
     public int|string $charged = '';
 
@@ -37,7 +39,6 @@ class extends Component {
         Flux::toast(variant: 'success', text: __('Charge updated.'));
 
         $this->redirect(route('new.car-charges.index', [
-            'car' => $this->charge->car_id,
             'month' => $this->charge->date->format('Y-m'),
         ]), navigate: true);
     }
@@ -71,7 +72,7 @@ class extends Component {
             </flux:card>
 
             <flux:card>
-                <flux:select wire:model="car_id" :label="__('Car')">
+                <flux:select wire:model="car_id" :label="__('Car')" disabled>
                     @foreach (\App\Models\CarCharge::CARS as $car)
                         <flux:select.option :value="$car">{{ ucfirst($car) }}</flux:select.option>
                     @endforeach
@@ -82,9 +83,12 @@ class extends Component {
                 <flux:input wire:model="charged" :label="__('Charged (kWh)')" type="number" min="0" required />
             </flux:card>
 
-            <flux:button variant="primary" type="submit">
-                {{ __('Save Charge') }}
-            </flux:button>
+            <div class="flex items-center gap-2">
+                <flux:button variant="primary" type="submit">
+                    {{ __('Save Charge') }}
+                </flux:button>
+                <flux:button variant="ghost" href="{{ route('new.car-charges.index', ['month' => $charge->date->format('Y-m')]) }}" wire:navigate>{{ __('Cancel') }}</flux:button>
+            </div>
         </form>
     </div>
 </div>

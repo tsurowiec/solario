@@ -3,6 +3,7 @@
 use App\Models\CarCharge;
 use Flux\Flux;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -11,12 +12,18 @@ new #[Title('Add Car Charge')]
 class extends Component {
 
     public string $date = '';
+    #[Locked]
     public string $car_id = '';
     public int|string $charged = '';
+
+    /** Month (Y-m) of the list we came from; Cancel returns there. */
+    #[Locked]
+    public string $month = '';
 
     public function mount(): void
     {
         $this->date = today()->toDateString();
+        $this->month = preg_match('/^\d{4}-\d{2}$/', (string) request()->query('month')) ? request()->query('month') : '';
         $this->car_id = in_array(request()->query('car'), CarCharge::CARS, true) ? request()->query('car') : CarCharge::CARS[0];
     }
 
@@ -32,7 +39,7 @@ class extends Component {
 
         Flux::toast(variant: 'success', text: __('Charge saved.'));
 
-        $this->redirect(route('new.car-charges.index', ['car' => $charge->car_id, 'month' => $charge->date->format('Y-m')]), navigate: true);
+        $this->redirect(route('new.car-charges.index', ['month' => $charge->date->format('Y-m')]), navigate: true);
     }
 
 }; ?>
@@ -64,7 +71,7 @@ class extends Component {
             </flux:card>
 
             <flux:card>
-                <flux:select wire:model="car_id" :label="__('Car')">
+                <flux:select wire:model="car_id" :label="__('Car')" disabled>
                     @foreach (\App\Models\CarCharge::CARS as $car)
                         <flux:select.option :value="$car">{{ ucfirst($car) }}</flux:select.option>
                     @endforeach
@@ -75,9 +82,12 @@ class extends Component {
                 <flux:input wire:model="charged" :label="__('Charged (kWh)')" type="number" min="0" required />
             </flux:card>
 
-            <flux:button variant="primary" type="submit">
-                {{ __('Save Charge') }}
-            </flux:button>
+            <div class="flex items-center gap-2">
+                <flux:button variant="primary" type="submit">
+                    {{ __('Save Charge') }}
+                </flux:button>
+                <flux:button variant="ghost" href="{{ route('new.car-charges.index', array_filter(['month' => $month])) }}" wire:navigate>{{ __('Cancel') }}</flux:button>
+            </div>
         </form>
     </div>
 </div>

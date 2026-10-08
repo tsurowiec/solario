@@ -31,7 +31,7 @@ new class extends Component {
     $d = $this->usage;
     $from = Carbon::parse($d->from);
     $to = Carbon::parse($d->to);
-    $carColors = ['tesia' => 'text-zinc-400', 'tessy' => 'text-red-400'];
+    $carColors = \App\Models\CarCharge::COLORS;
 ?>
 <flux:card x-data="{ daily: false }">
     <div class="flex items-center justify-between mb-6">

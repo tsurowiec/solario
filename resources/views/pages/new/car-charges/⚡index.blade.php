@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CarCharge;
+use App\Services\EnergyUsage;
 use Carbon\Carbon;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
@@ -13,28 +14,14 @@ new #[Title('Car Charges')]
 #[Layout('layouts.app', ['title' => 'Car Charges'])]
 class extends Component {
 
-    #[Url]
-    public string $car = '';
-
     /** Selected month (Y-m); the current month by default. */
     #[Url]
     public string $month = '';
 
     public function mount(): void
     {
-        if (! in_array($this->car, CarCharge::CARS, true)) {
-            $this->car = CarCharge::CARS[0];
-        }
-
         if (! preg_match('/^\d{4}-\d{2}$/', $this->month)) {
             $this->month = today()->format('Y-m');
-        }
-    }
-
-    public function selectCar(string $car): void
-    {
-        if (in_array($car, CarCharge::CARS, true)) {
-            $this->car = $car;
         }
     }
 
@@ -64,36 +51,40 @@ class extends Component {
             ->all();
     }
 
+    /** Average price of the selected month (PLN/kWh, from the dashboard summary); null without data or prices. */
     #[Computed]
-    public function charges()
+    public function pricePerUnit(): ?float
+    {
+        return app(EnergyUsage::class)->month(Carbon::createFromFormat('!Y-m', $this->month))?->pricePerUnit;
+    }
+
+    /**
+     * Charges of the selected month per car (car id => charges), newest first.
+     *
+     * @return array<string, \Illuminate\Support\Collection<int, CarCharge>>
+     */
+    #[Computed]
+    public function charges(): array
     {
         $start = Carbon::createFromFormat('!Y-m', $this->month);
 
-        return CarCharge::where('car_id', $this->car)
-            ->whereDate('date', '>=', $start->toDateString())
+        $charges = CarCharge::whereDate('date', '>=', $start->toDateString())
             ->whereDate('date', '<=', $start->copy()->endOfMonth()->toDateString())
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->groupBy('car_id');
+
+        return collect(CarCharge::CARS)
+            ->mapWithKeys(fn (string $car) => [$car => $charges->get($car, collect())])
+            ->all();
     }
 
 }; ?>
 
 <div class="mx-auto max-w-2xl w-full space-y-6">
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl">{{ __('Car Charges') }}</flux:heading>
-        <flux:button href="{{ route('new.car-charges.create', ['car' => $car]) }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
-    </div>
-
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <flux:button.group>
-            @foreach (\App\Models\CarCharge::CARS as $carId)
-                <flux:button
-                    wire:click="selectCar('{{ $carId }}')"
-                    :variant="$car === $carId ? 'primary' : 'filled'"
-                >{{ ucfirst($carId) }}</flux:button>
-            @endforeach
-        </flux:button.group>
+        <flux:heading size="xl">{{ __('Car Charges') }}</flux:heading>
 
         <flux:select wire:model.live="month" class="max-w-48" :aria-label="__('Month')">
             @foreach ($this->months as $value => $label)
@@ -102,41 +93,52 @@ class extends Component {
         </flux:select>
     </div>
 
-    <flux:card>
-        @if ($this->charges->isEmpty())
-            <flux:text>{{ __('No charges in this month.') }}</flux:text>
-        @else
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Date') }}</flux:table.column>
-                    <flux:table.column>{{ __('Car') }}</flux:table.column>
-                    <flux:table.column align="end">{{ __('Charged') }}</flux:table.column>
-                    <flux:table.column class="w-0" />
-                </flux:table.columns>
-                <flux:table.rows>
-                    @foreach ($this->charges as $charge)
-                        <flux:table.row :key="$charge->id">
-                            <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
-                            <flux:table.cell>{{ ucfirst($charge->car_id) }}</flux:table.cell>
-                            <flux:table.cell align="end">{{ number_format($charge->charged) }} kWh</flux:table.cell>
-                            <flux:table.cell>
-                                <div class="flex items-center justify-end gap-1">
-                                    <flux:button size="xs" icon="pencil" href="{{ route('new.car-charges.edit', $charge) }}" wire:navigate :aria-label="__('Edit')" />
-                                    <flux:button size="xs" variant="danger" icon="trash" wire:click="delete({{ $charge->id }})" wire:confirm="{{ __('Delete this charge?') }}" :aria-label="__('Delete')" />
-                                </div>
+    @foreach ($this->charges as $carId => $charges)
+        <flux:card wire:key="car-{{ $carId }}" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <flux:heading size="lg" class="flex items-center gap-2">
+                    <flux:icon name="bolt" :class="(\App\Models\CarCharge::COLORS[$carId] ?? 'text-zinc-400').' shrink-0'" />
+                    {{ ucfirst($carId) }}
+                </flux:heading>
+                <flux:button size="sm" href="{{ route('new.car-charges.create', ['car' => $carId, 'month' => $month]) }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
+            </div>
+
+            @if ($charges->isEmpty())
+                <flux:text>{{ __('No charges in this month.') }}</flux:text>
+            @else
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Date') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Charged') }}</flux:table.column>
+                        <flux:table.column class="w-0" />
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($charges as $charge)
+                            <flux:table.row :key="$charge->id">
+                                <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ number_format($charge->charged) }} kWh</flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <flux:button size="xs" icon="pencil" href="{{ route('new.car-charges.edit', $charge) }}" wire:navigate :aria-label="__('Edit')" />
+                                        <flux:button size="xs" variant="danger" icon="trash" wire:click="delete({{ $charge->id }})" wire:confirm="{{ __('Delete this charge?') }}" :aria-label="__('Delete')" />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                    <flux:table.rows>
+                        <flux:table.row>
+                            <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
+                            <flux:table.cell align="end" class="font-semibold">{{ number_format($charges->sum('charged')) }} kWh</flux:table.cell>
+                            <flux:table.cell align="end" class="font-semibold whitespace-nowrap">
+                                @if ($this->pricePerUnit !== null)
+                                    {{ number_format($charges->sum('charged') * $this->pricePerUnit, 2) }} PLN
+                                @endif
                             </flux:table.cell>
                         </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-                <flux:table.rows>
-                    <flux:table.row>
-                        <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
-                        <flux:table.cell />
-                        <flux:table.cell align="end" class="font-semibold">{{ number_format($this->charges->sum('charged')) }} kWh</flux:table.cell>
-                        <flux:table.cell />
-                    </flux:table.row>
-                </flux:table.rows>
-            </flux:table>
-        @endif
-    </flux:card>
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
+    @endforeach
 </div>
