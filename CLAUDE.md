@@ -30,6 +30,7 @@ Domain data is returned as readonly VOs from `app/Data/`. Use camelCase public p
 - `PvInverterInterpolator` — `->forDate()` returns the PV inverter value (`float`) for a day, linearly proportioned between the surrounding `PvInverterReading`s; throws outside their range
 - `EnergyUsage` — `->month()` returns `EnergySummary` VO (PV from inverter, raw consumed / fed-in from `MeterDailyReading`) for the month's full-data days, stopping at the first gap; null when none
 - `MeterCsvImporter` — imports the hourly meter CSV into `MeterDailyReading` (one row per complete day); returns `MeterImportResult` VO
+- `TauronMeterClient` — `->fetchCsv($from, $to)` logs in to Tauron eLicznik (ported from mlesniew/elicznik) and downloads the hourly meter CSV; the `meter:fetch` command imports it via `MeterCsvImporter` (scheduled daily at 06:00 Europe/Warsaw, last `TAURON_LOOKBACK_DAYS` days; needs `TAURON_USERNAME` / `TAURON_PASSWORD`)
 - `CarChargeUsage` — returns charged kWh (`int`) for a car; use `->month()`, `->year()`, `->season()`, or `->between()`
 
 ### Pricing (per season)

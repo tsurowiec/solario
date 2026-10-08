@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'tauron' => [
+        'username' => env('TAURON_USERNAME'),
+        'password' => env('TAURON_PASSWORD'),
+        'site' => env('TAURON_SITE'), // optional metering point id
+        'lookback_days' => env('TAURON_LOOKBACK_DAYS', 7),
+    ],
+
 ];

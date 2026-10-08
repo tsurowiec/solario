@@ -50,8 +50,8 @@
             @endforeach
             <flux:table.row>
                 <flux:table.cell class="font-semibold">{{ __('Total incl. VAT') }}</flux:table.cell>
-                <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('peak'), 5) }}</flux:table.cell>
-                <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('off_peak'), 5) }}</flux:table.cell>
+                <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('peak'), 2) }}</flux:table.cell>
+                <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('off_peak'), 2) }}</flux:table.cell>
             </flux:table.row>
         </flux:table.rows>
     </flux:table>
@@ -70,7 +70,7 @@
             @endforeach
             <flux:table.row>
                 <flux:table.cell class="font-semibold">{{ __('Total incl. VAT') }}</flux:table.cell>
-                <flux:table.cell align="end" class="font-semibold tabular-nums">{{ number_format($price->grossMonthly(), 5) }}</flux:table.cell>
+                <flux:table.cell align="end" class="font-semibold tabular-nums">{{ number_format($price->grossMonthly(), 2) }}</flux:table.cell>
             </flux:table.row>
         </flux:table.rows>
     </flux:table>

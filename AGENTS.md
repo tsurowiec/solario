@@ -32,7 +32,7 @@ The application is being rebuilt incrementally using a side-by-side approach:
 | Feature | Legacy location | New location | Status |
 |---------|-----------------|--------------|--------|
 | Dashboard | `dashboard.blade.php`, `livewire/⚡*-card`, `⚡*-chart` | `pages::new.dashboard` (`/new/dashboard`) | new available |
-| Readings (grid side: consumed / fed-in) | `pages::readings.*` | `MeterDailyReading` model, `MeterCsvImporter`, `pages::new.meter-import.create`, `pages::new.readings.index` | new available |
+| Readings (grid side: consumed / fed-in) | `pages::readings.*` | `MeterDailyReading` model, `MeterCsvImporter`, `TauronMeterClient` + `meter:fetch` (daily), `pages::new.meter-import.create`, `pages::new.readings.index` | new available |
 | PV inverter data (replaces `pv_generated` of Readings) | `pages::readings.create` (PV Generated field) | `PvInverterReading` model, `pages::new.pv-inverter.create` / `.edit` | new available |
 | Car charges | `pages::car-charges.*` | `pages::new.car-charges.index` / `.create` / `.edit` | new available |
 | Seasons | `pages::seasons.*` | — | legacy |

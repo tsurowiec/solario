@@ -112,10 +112,10 @@ class NewEnergyUsageTest extends TestCase
         $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
 
         $net = 10 * 2 / 31                          // monthly fees prorated: 2 of 31 days
-            + (0.5 + 0.3) * 6.0                     // peak sell + distr × payable
-            + (0.002 + 0.01 + 0.003) * 2            // peak oze + quality + cogen × raw consumed
-            + (0.4 + 0.1) * 4.4                     // off-peak sell + distr × payable
-            + (0.004 + 0.02 + 0.006) * 4;           // off-peak oze + quality + cogen × raw consumed
+            + (0.5 + 0.3 + 0.01) * 6.0              // peak sell + distr + quality × payable
+            + (0.002 + 0.003) * 2                   // peak oze + cogen × raw consumed
+            + (0.4 + 0.1 + 0.02) * 4.4              // off-peak sell + distr + quality × payable
+            + (0.004 + 0.006) * 4;                  // off-peak oze + cogen × raw consumed
 
         $this->assertEqualsWithDelta($net * 1.23, $d->amount, 0.000001);
         $this->assertEqualsWithDelta($d->amount / $d->totalUsage, $d->pricePerUnit, 0.000001);

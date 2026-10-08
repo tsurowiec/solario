@@ -60,13 +60,13 @@ class Price extends Model
 
     /**
      * Approximate gross price per kWh for a tariff zone ('peak' or 'off_peak'):
-     * (sell + distr + 2 × quality + 2 × oze + 2 × cogen) × VAT.
+     * (sell + distr + quality + 2 × oze + 2 × cogen) × VAT.
      */
     public function grossPerKwh(string $zone): float
     {
         return ($this->{$zone.'_sell'}
             + $this->{$zone.'_distr'}
-            + 2 * $this->{$zone.'_quality'}
+            + $this->{$zone.'_quality'}
             + 2 * $this->{$zone.'_oze'}
             + 2 * $this->{$zone.'_cogen'}) * self::VAT;
     }

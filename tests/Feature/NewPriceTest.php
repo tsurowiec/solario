@@ -34,7 +34,7 @@ class NewPriceTest extends TestCase
         $this->assertSame(0.2, Price::activeOn(Carbon::parse('2026-10-06'))->peak_sell);
     }
 
-    public function test_gross_per_kwh_doubles_quality_oze_and_cogen_and_adds_vat(): void
+    public function test_gross_per_kwh_doubles_oze_and_cogen_and_adds_vat(): void
     {
         $price = $this->price('2026-01-01', 0);
         $price->fill([
@@ -42,8 +42,8 @@ class NewPriceTest extends TestCase
             'off_peak_sell' => 0.4, 'off_peak_distr' => 0.1, 'off_peak_quality' => 0.02, 'off_peak_oze' => 0.004, 'off_peak_cogen' => 0.006,
         ])->save();
 
-        $this->assertEqualsWithDelta((0.5 + 0.3 + 0.02 + 0.004 + 0.006) * 1.23, $price->grossPerKwh('peak'), 0.000001);
-        $this->assertEqualsWithDelta((0.4 + 0.1 + 0.04 + 0.008 + 0.012) * 1.23, $price->grossPerKwh('off_peak'), 0.000001);
+        $this->assertEqualsWithDelta((0.5 + 0.3 + 0.01 + 0.004 + 0.006) * 1.23, $price->grossPerKwh('peak'), 0.000001);
+        $this->assertEqualsWithDelta((0.4 + 0.1 + 0.02 + 0.008 + 0.012) * 1.23, $price->grossPerKwh('off_peak'), 0.000001);
     }
 
     public function test_gross_monthly_sums_the_fees_and_adds_vat(): void
@@ -61,9 +61,9 @@ class NewPriceTest extends TestCase
         $this->travelTo('2026-10-06');
         $this->price('2026-01-01', 0.1);
 
-        // (0.1 + 0.1 + 2 × 0.1 × 3) × 1.23 = 0.984
+        // (0.1 + 0.1 + 0.1 + 2 × 0.1 × 2) × 1.23 = 0.861
         Livewire::test('pages::new.prices.index')
-            ->assertSeeInOrder(['Cogeneration', 'Total incl. VAT', '~0.98400', '~0.98400', 'PLN/month', 'Network', 'Total incl. VAT', '0.49200']);   // 4 × 0.1 × 1.23
+            ->assertSeeInOrder(['Cogeneration', 'Total incl. VAT', '~0.86', '~0.86', 'PLN/month', 'Network', 'Total incl. VAT', '0.49']);   // 4 × 0.1 × 1.23
     }
 
     public function test_guests_are_redirected_to_the_login_page(): void

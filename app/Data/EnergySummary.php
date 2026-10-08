@@ -39,7 +39,7 @@ readonly class EnergySummary
 
     /**
      * Gross cost in PLN incl. VAT; null without prices:
-     * (monthly fees × days ÷ days in month + Σ zone: (sell + distr) × payable + (oze + quality + cogen) × raw consumed) × VAT.
+     * (monthly fees × days ÷ days in month + Σ zone: (sell + distr + quality) × payable + (oze + cogen) × raw consumed) × VAT.
      * Monthly fees are prorated to the days the period covers.
      */
     public ?float $amount;
@@ -119,8 +119,8 @@ readonly class EnergySummary
         $net = $price->monthlyFees() * $this->days / Carbon::parse($this->from)->daysInMonth;
 
         foreach (['peak' => [$this->peakPayable, $this->peakConsumed], 'off_peak' => [$this->offPeakPayable, $this->offPeakConsumed]] as $zone => [$payable, $consumed]) {
-            $net += ($price->{$zone.'_sell'} + $price->{$zone.'_distr'}) * $payable;
-            $net += ($price->{$zone.'_oze'} + $price->{$zone.'_quality'} + $price->{$zone.'_cogen'}) * $consumed;
+            $net += ($price->{$zone.'_sell'} + $price->{$zone.'_distr'} + $price->{$zone.'_quality'}) * $payable;
+            $net += ($price->{$zone.'_oze'} + $price->{$zone.'_cogen'}) * $consumed;
         }
 
         return $net * Price::VAT;

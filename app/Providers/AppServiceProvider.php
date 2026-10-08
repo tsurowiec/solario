@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\TauronMeterClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TauronMeterClient::class, fn (): TauronMeterClient => new TauronMeterClient(
+            config('services.tauron.username'),
+            config('services.tauron.password'),
+            config('services.tauron.site'),
+        ));
     }
 
     /**
