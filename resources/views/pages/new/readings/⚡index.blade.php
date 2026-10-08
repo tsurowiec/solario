@@ -176,8 +176,8 @@ class extends Component {
             <thead data-flux-columns>
                 <tr>
                     <flux:table.column />
-                    <flux:table.column colspan="2" align="end" class="w-0 border-s border-zinc-800/10 dark:border-white/20">
-                        <div class="flex items-center justify-end gap-1 whitespace-normal text-end"><flux:icon name="sun" variant="mini" class="shrink-0 text-yellow-400" />{{ __('Inverter') }}</div>
+                    <flux:table.column colspan="2" align="center" class="w-0 border-s border-zinc-800/10 dark:border-white/20">
+                        <div class="flex items-center justify-center gap-1 whitespace-normal text-center"><flux:icon name="sun" variant="mini" class="shrink-0 text-yellow-400" />{{ __('Inverter') }}</div>
                     </flux:table.column>
                     <flux:table.column colspan="4" align="center" class="border-s border-zinc-800/10 dark:border-white/20">
                         <div class="flex items-center justify-center gap-1"><flux:icon name="sun" variant="mini" class="text-zinc-400" />{{ __('Peak (T1)') }}</div>
