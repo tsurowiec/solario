@@ -12,7 +12,10 @@ use InvalidArgumentException;
  *
  * Row format: "Y-m-d H:00;T1|T2;value;type;status;" with decimal commas.
  * Hours run 1:00–24:00 (end of the hour), so "24:00" belongs to the same day.
- * Only complete days (every hour present for every type) are saved; existing days are overwritten.
+ * Only consumed and fed-in rows are read; the balanced values are calculated per hour
+ * (hourly net-metering: balanced consumed = max(0, consumed − fed-in), balanced fed-in the reverse),
+ * so the CSV's own balanced rows, published later by the operator, are ignored.
+ * Only complete days (every hour present for both types) are saved; existing days are overwritten.
  */
 class MeterCsvImporter
 {
@@ -26,8 +29,6 @@ class MeterCsvImporter
     private const TYPES = [
         'pobór [kWh]' => 'consumed',
         'oddanie [kWh]' => 'fed_in',
-        'pobrana po zbilansowaniu [kWh]' => 'balanced_consumed',
-        'oddana po zbilansowaniu [kWh]' => 'balanced_fed_in',
     ];
 
     private const ZONES = ['T1' => 't1', 'T2' => 't2'];
@@ -51,8 +52,9 @@ class MeterCsvImporter
             $content = mb_convert_encoding($content, 'UTF-8', 'Windows-1250');
         }
 
-        // Values are summed in Wh (integers) to avoid float rounding errors.
-        $totals = [];
+        // Values are kept in Wh (integers) to avoid float rounding errors.
+        // Hourly values are grouped by date and "hour|zone"; a list per type keeps repeated hours (DST) apart.
+        $hourly = [];
         $hourCounts = [];
 
         foreach (preg_split('/\r\n|\r|\n/', $content) as $line) {
@@ -71,11 +73,12 @@ class MeterCsvImporter
             }
 
             $date = $m[1];
-            $field = self::ZONES[$zone].'_'.self::TYPES[$type];
 
-            $totals[$date][$field] = ($totals[$date][$field] ?? 0) + $this->toWh($value);
+            $hourly[$date][$dateTime.'|'.$zone][self::TYPES[$type]][] = $this->toWh($value);
             $hourCounts[$date][$type] = ($hourCounts[$date][$type] ?? 0) + 1;
         }
+
+        $totals = array_map($this->sumDay(...), $hourly);
 
         ksort($totals);
 
@@ -101,6 +104,43 @@ class MeterCsvImporter
         }
 
         return new MeterImportResult($imported, $skipped);
+    }
+
+    /**
+     * Sums a day's hourly values per zone, netting consumed against fed-in within each hour.
+     *
+     * @param  array<string, array<string, list<int>>>  $hours  values in Wh per "hour|zone" and type
+     * @return array<string, int> totals in Wh per field
+     */
+    private function sumDay(array $hours): array
+    {
+        $totals = [];
+
+        foreach ($hours as $key => $values) {
+            $zone = self::ZONES[explode('|', $key)[1]];
+            $consumedList = $values['consumed'] ?? [];
+            $fedInList = $values['fed_in'] ?? [];
+
+            foreach (array_keys($consumedList + $fedInList) as $i) {
+                $consumed = $consumedList[$i] ?? 0;
+                $fedIn = $fedInList[$i] ?? 0;
+
+                $this->add($totals, "{$zone}_consumed", $consumed);
+                $this->add($totals, "{$zone}_fed_in", $fedIn);
+                $this->add($totals, "{$zone}_balanced_consumed", max(0, $consumed - $fedIn));
+                $this->add($totals, "{$zone}_balanced_fed_in", max(0, $fedIn - $consumed));
+            }
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @param  array<string, int>  $totals
+     */
+    private function add(array &$totals, string $field, int $wh): void
+    {
+        $totals[$field] = ($totals[$field] ?? 0) + $wh;
     }
 
     /**

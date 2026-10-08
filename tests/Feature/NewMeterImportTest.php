@@ -17,8 +17,6 @@ class NewMeterImportTest extends TestCase
     private const TYPES = [
         'pobór [kWh]',
         'oddanie [kWh]',
-        'pobrana po zbilansowaniu [kWh]',
-        'oddana po zbilansowaniu [kWh]',
     ];
 
     protected function setUp(): void
@@ -50,12 +48,43 @@ class NewMeterImportTest extends TestCase
         // Hours 7–22 are T1 (16 h), the remaining 8 h are T2; each type has its own per-hour value.
         $this->assertSame(16 * 0.101, $day->t1_consumed);
         $this->assertSame(16 * 0.202, $day->t1_fed_in);
-        $this->assertSame(16 * 0.303, $day->t1_balanced_consumed);
-        $this->assertSame(16 * 0.404, $day->t1_balanced_fed_in);
         $this->assertSame(8 * 0.101, $day->t2_consumed);
         $this->assertSame(8 * 0.202, $day->t2_fed_in);
-        $this->assertSame(8 * 0.303, $day->t2_balanced_consumed);
-        $this->assertSame(8 * 0.404, $day->t2_balanced_fed_in);
+    }
+
+    public function test_balanced_values_are_netted_per_hour(): void
+    {
+        // Every hour consumes 0.300; fed-in is 1.000 in hours 10–14 (T1) and 0.100 otherwise.
+        $csv = $this->csv(['2026-10-01'], value: fn (string $type, int $hour) => match (true) {
+            $type === 'pobór [kWh]' => '0,300',
+            $hour >= 10 && $hour <= 14 => '1,000',
+            default => '0,100',
+        });
+
+        $this->importer()->importString($csv);
+
+        $day = MeterDailyReading::first();
+        // T1: 11 hours net 0.200 consumed, 5 hours net 0.700 fed-in — not netted across the day.
+        $this->assertSame(11 * 0.2, $day->t1_balanced_consumed);
+        $this->assertSame(5 * 0.7, $day->t1_balanced_fed_in);
+        $this->assertSame(8 * 0.2, $day->t2_balanced_consumed);
+        $this->assertSame(0.0, $day->t2_balanced_fed_in);
+    }
+
+    public function test_balanced_rows_in_the_csv_are_ignored(): void
+    {
+        $csv = $this->csv(['2026-10-01']);
+        for ($hour = 1; $hour <= 24; $hour++) {
+            $zone = $hour >= 7 && $hour <= 22 ? 'T1' : 'T2';
+            $csv .= "2026-10-01 {$hour}:00;{$zone};9,000;pobrana po zbilansowaniu [kWh]; licznik; \n";
+            $csv .= "2026-10-01 {$hour}:00;{$zone};9,000;oddana po zbilansowaniu [kWh]; licznik; \n";
+        }
+
+        $this->importer()->importString($csv);
+
+        $day = MeterDailyReading::first();
+        $this->assertSame(0.0, $day->t1_balanced_consumed);
+        $this->assertSame(16 * 0.101, $day->t1_balanced_fed_in);
     }
 
     public function test_hour_24_belongs_to_the_same_day(): void
@@ -134,15 +163,14 @@ class NewMeterImportTest extends TestCase
      *
      * @param  list<string>  $dates
      * @param  array{0: string, 1: int}|null  $skipHour  [date, hour] to leave out for every type
+     * @param  (callable(string, int): string)|null  $value  value per type and hour; defaults to 0,101 / 0,202 per type
      */
-    private function csv(array $dates, int $hours = 24, ?array $skipHour = null): string
+    private function csv(array $dates, int $hours = 24, ?array $skipHour = null, ?callable $value = null): string
     {
         $lines = ['Data; Strefa; Wartość ;Rodzaj;Status;'];
+        $value ??= fn (string $type) => ['pobór [kWh]' => '0,101', 'oddanie [kWh]' => '0,202'][$type];
 
-        foreach (self::TYPES as $i => $type) {
-            $n = $i + 1;
-            $value = "0,{$n}0{$n}";
-
+        foreach (self::TYPES as $type) {
             foreach ($dates as $date) {
                 for ($hour = 1; $hour <= $hours; $hour++) {
                     if ($skipHour === [$date, $hour]) {
@@ -150,7 +178,7 @@ class NewMeterImportTest extends TestCase
                     }
 
                     $zone = $hour >= 7 && $hour <= 22 ? 'T1' : 'T2';
-                    $lines[] = "{$date} {$hour}:00;{$zone};{$value};{$type}; licznik; ";
+                    $lines[] = "{$date} {$hour}:00;{$zone};{$value($type, $hour)};{$type}; licznik; ";
                 }
             }
         }
