@@ -217,7 +217,7 @@ class NewEnergyUsageTest extends TestCase
         return $this->month('2026-10-01');
     }
 
-    public function test_period_ends_at_last_pv_reading(): void
+    public function test_pv_is_extrapolated_past_the_last_reading(): void
     {
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-10-03', 'value' => 1030]);
@@ -225,9 +225,18 @@ class NewEnergyUsageTest extends TestCase
 
         $d = $this->month('2026-10-01');
 
-        $this->assertSame('2026-10-03', $d->to);
-        $this->assertEqualsWithDelta(30.0, $d->pvGenerated, 0.0001);
-        $this->assertEqualsWithDelta(3 * 3.0, $d->consumed, 0.0001);
+        // 10/day from the last two readings → Oct 5 at 1050.
+        $this->assertSame('2026-10-05', $d->to);
+        $this->assertEqualsWithDelta(50.0, $d->pvGenerated, 0.0001);
+        $this->assertEqualsWithDelta(5 * 3.0, $d->consumed, 0.0001);
+    }
+
+    public function test_period_ends_at_a_single_pv_reading(): void
+    {
+        PvInverterReading::create(['date' => '2026-10-03', 'value' => 1030]);
+        $this->meterDays('2026-10-01', '2026-10-05');
+
+        $this->assertNull($this->month('2026-10-01'));
     }
 
     public function test_period_starts_when_pv_data_covers_the_previous_day(): void
@@ -285,14 +294,15 @@ class NewEnergyUsageTest extends TestCase
         $this->get(route('new.dashboard'))->assertSee('October 2026')->assertDontSee('September 2026');
     }
 
-    public function test_dashboard_shows_last_full_month_when_meter_runs_ahead_of_pv(): void
+    public function test_dashboard_shows_meter_month_when_pv_is_extrapolated(): void
     {
         $this->actingAs(User::factory()->create());
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-10-31', 'value' => 1310]);
         $this->meterDays('2026-10-01', '2026-11-02');
 
-        $this->get(route('new.dashboard'))->assertSee('October 2026')->assertDontSee('November 2026');
+        $this->get(route('new.dashboard'))->assertSee('November 2026');
+        $this->assertSame('2026-11-02', $this->month('2026-11-01')->to);
     }
 
     private function month(string $date)

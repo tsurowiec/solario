@@ -103,8 +103,11 @@ class NewReadingsTest extends TestCase
         PvInverterReading::create(['date' => '2026-10-04', 'value' => 1040]);
         $this->meterDay('2026-10-05', 1);
 
-        // Listed days: Oct 1–5. Counter Oct 5 can't be interpolated (no later reading) → no production.
-        Livewire::test('pages::new.readings.index')->assertSet('pvProduction', null);
+        // Listed days: Oct 1–5. Counter Oct 5 is extrapolated at 10/day (Sep 30 → Oct 4): 1050 − 1000.
+        $this->assertSame(
+            ['value' => 50.0, 'exact' => false],
+            Livewire::test('pages::new.readings.index')->instance()->pvProduction,
+        );
 
         PvInverterReading::create(['date' => '2026-10-10', 'value' => 1100]);
 
@@ -192,7 +195,7 @@ class NewReadingsTest extends TestCase
         $values = $interpolator->between(Carbon::parse('2026-09-28'), Carbon::parse('2026-10-12'));
 
         $this->assertSame('2026-09-30', array_key_first($values));
-        $this->assertSame('2026-10-10', array_key_last($values));
+        $this->assertSame('2026-10-12', array_key_last($values)); // extrapolated past the last reading
         foreach ($values as $date => $value) {
             $this->assertEqualsWithDelta($interpolator->forDate(Carbon::parse($date)), $value, 0.0001, $date);
         }

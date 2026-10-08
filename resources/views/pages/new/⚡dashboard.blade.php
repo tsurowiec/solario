@@ -2,6 +2,7 @@
 
 use App\Models\MeterDailyReading;
 use App\Models\PvInverterReading;
+use App\Services\PvInverterInterpolator;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ class extends Component {
     /**
      * The month of the latest day that can have both meter and PV inverter data,
      * but never before the first meter day (PV readings may start earlier).
+     * With two or more PV readings the PV counter is extrapolated, so the last meter day counts.
      */
     #[Computed]
     public function month(): ?string
@@ -27,7 +29,9 @@ class extends Component {
             return null;
         }
 
-        $latest = $lastPv ? max($firstMeter, min($lastMeter, $lastPv)) : $lastMeter;
+        $latest = $lastPv && ! app(PvInverterInterpolator::class)->extrapolates()
+            ? max($firstMeter, min($lastMeter, $lastPv))
+            : $lastMeter;
 
         return Carbon::parse($latest)->startOfMonth()->toDateString();
     }

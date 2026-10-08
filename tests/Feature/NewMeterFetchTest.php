@@ -28,6 +28,7 @@ class NewMeterFetchTest extends TestCase
             'services.tauron.username' => 'user@example.com',
             'services.tauron.password' => 'secret',
             'services.tauron.site' => null,
+            'services.tauron.lookback_days' => 7,
         ]);
     }
 

@@ -13,7 +13,8 @@ use Carbon\Carbon;
  * Combines MeterDailyReading (grid) and PV inverter readings into an EnergySummary.
  *
  * A day has full data when it has a meter row and the PV inverter counter can be
- * interpolated for that day and the day before (a reading is the counter at the end of its day).
+ * determined for that day and the day before (a reading is the counter at the end of its day):
+ * interpolated between readings, or extrapolated after the last one when there are at least two.
  */
 class EnergyUsage
 {
@@ -36,7 +37,8 @@ class EnergyUsage
         }
 
         $firstPv = Carbon::parse($firstPv)->startOfDay();
-        $lastPv = Carbon::parse($lastPv)->startOfDay();
+        // With two or more readings the counter is extrapolated past the last one.
+        $lastPv = $this->interpolator->extrapolates() ? $end : Carbon::parse($lastPv)->startOfDay();
 
         $meter = MeterDailyReading::whereDate('date', '>=', $start->toDateString())
             ->whereDate('date', '<=', $end->toDateString())

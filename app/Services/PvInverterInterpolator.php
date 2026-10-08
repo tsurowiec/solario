@@ -12,9 +12,10 @@ class PvInverterInterpolator
      * Interpolate the PV inverter value for the given date.
      *
      * The value is linearly proportioned between the nearest readings
-     * on either side of the date.
+     * on either side of the date. After the last reading it is extrapolated
+     * at the daily rate of the last two readings.
      *
-     * @throws InvalidArgumentException if the date is outside the range of recorded readings
+     * @throws InvalidArgumentException if the date is before the first reading, or after the last one when there is only one
      */
     public function forDate(Carbon $date): float
     {
@@ -25,6 +26,16 @@ class PvInverterInterpolator
         $after = PvInverterReading::whereDate('date', '>=', $date->toDateString())
             ->orderBy('date')
             ->first();
+
+        if ($before && ! $after) {
+            $previous = PvInverterReading::whereDate('date', '<', $before->date->toDateString())
+                ->orderByDesc('date')
+                ->first();
+
+            if ($previous) {
+                return $this->extrapolate($previous, $before, $date);
+            }
+        }
 
         if (! $before || ! $after) {
             throw new InvalidArgumentException(
@@ -45,7 +56,8 @@ class PvInverterInterpolator
 
     /**
      * Interpolated values for every day in the range, keyed by date (Y-m-d).
-     * Days outside the range of recorded readings are left out.
+     * Days before the first reading are left out; days after the last one are
+     * extrapolated as in forDate() (left out when there is only one reading).
      * Loads the readings once, so it is suited for listing many days.
      *
      * @return array<string, float>
@@ -81,7 +93,13 @@ class PvInverterInterpolator
             $after = $readings[$i + 1] ?? null;
 
             if (! $after) {
-                break;
+                if ($i === 0) {
+                    break;
+                }
+
+                $values[$day->toDateString()] = $this->extrapolate($readings[$i - 1], $before, $day);
+
+                continue;
             }
 
             $values[$day->toDateString()] = $before->value
@@ -89,5 +107,23 @@ class PvInverterInterpolator
         }
 
         return $values;
+    }
+
+    /**
+     * Whether values after the last reading can be extrapolated (needs at least two readings).
+     */
+    public function extrapolates(): bool
+    {
+        return PvInverterReading::count() >= 2;
+    }
+
+    /**
+     * Value on a date after $last, continuing at the daily rate between $previous and $last.
+     */
+    private function extrapolate(PvInverterReading $previous, PvInverterReading $last, Carbon $date): float
+    {
+        $rate = ($last->value - $previous->value) / $previous->date->diffInDays($last->date);
+
+        return $last->value + $rate * $last->date->diffInDays($date->copy()->startOfDay());
     }
 }
