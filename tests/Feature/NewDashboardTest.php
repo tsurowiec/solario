@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class NewDashboardTest extends TestCase
@@ -32,5 +33,14 @@ class NewDashboardTest extends TestCase
             ->assertDontSee(route('new.meter-import.create'))
             ->assertDontSee(route('new.pv-inverter.create'))
             ->assertDontSee(route('new.car-charges.create'));
+    }
+
+    public function test_dashboard_links_to_readings_and_car_charges(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::new.dashboard')
+            ->assertSee(route('new.readings.index'))
+            ->assertSee(route('new.car-charges.index'));
     }
 }

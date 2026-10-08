@@ -35,7 +35,21 @@ class extends Component {
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
+    <div class="flex flex-wrap gap-2">
+        <flux:button href="{{ route('new.readings.index') }}" icon="list-bullet" wire:navigate>{{ __('Readings') }}</flux:button>
+        <flux:button href="{{ route('new.car-charges.index') }}" icon="bolt" wire:navigate>{{ __('Car Charges') }}</flux:button>
+    </div>
+
     @if ($this->month)
+        <div class="portrait:hidden flex flex-col gap-4">
+            <livewire:new.monthly-chart :month="$this->month" :key="'chart-'.$this->month" />
+            <livewire:new.energy-split-chart :month="$this->month" :key="'split-'.$this->month" />
+        </div>
+        <flux:card class="landscape:hidden flex items-center gap-3 text-zinc-400">
+            <flux:icon name="arrow-path" class="shrink-0 rotate-90" />
+            <flux:text>{{ __('Rotate for charts') }}</flux:text>
+        </flux:card>
+
         <div class="grid auto-rows-min gap-4 landscape:grid-cols-2">
             <livewire:new.month-card :month="$this->month" :key="'month-'.$this->month" />
         </div>
