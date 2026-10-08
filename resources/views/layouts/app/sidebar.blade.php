@@ -21,12 +21,12 @@
                         {{ __('Readings') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="banknotes" :href="route('new.prices.index')" :current="request()->routeIs('new.prices.*')" wire:navigate>
-                        {{ __('Prices') }}
-                    </flux:sidebar.item>
-
                     <flux:sidebar.item icon="bolt" :href="route('new.car-charges.index')" :current="request()->routeIs('new.car-charges.*')" wire:navigate>
                         {{ __('Car Charges') }}
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item icon="banknotes" :href="route('new.prices.index')" :current="request()->routeIs('new.prices.*')" wire:navigate>
+                        {{ __('Prices') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 

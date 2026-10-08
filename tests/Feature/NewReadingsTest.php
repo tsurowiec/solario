@@ -55,7 +55,7 @@ class NewReadingsTest extends TestCase
         ]);
 
         Livewire::test('pages::new.readings.index')
-            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)', 'PV Production', 'Measured', 'Balanced', 'Measured', 'Balanced', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in'])
+            ->assertSeeInOrder(['PV Production', 'Peak (T1)', 'Off-Peak (T2)', 'Measured', 'Balanced', 'Measured', 'Balanced', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in'])
             ->assertSeeInOrder(['1.111', '2.222', '3.333', '4.444', '5.555', '6.666', '7.777', '8.888']);
     }
 

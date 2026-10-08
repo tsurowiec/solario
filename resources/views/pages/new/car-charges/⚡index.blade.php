@@ -110,7 +110,7 @@ class extends Component {
                 <flux:table.columns>
                     <flux:table.column>{{ __('Date') }}</flux:table.column>
                     <flux:table.column>{{ __('Car') }}</flux:table.column>
-                    <flux:table.column align="end">{{ __('Charged (kWh)') }}</flux:table.column>
+                    <flux:table.column align="end">{{ __('Charged') }}</flux:table.column>
                     <flux:table.column class="w-0" />
                 </flux:table.columns>
                 <flux:table.rows>
@@ -118,7 +118,7 @@ class extends Component {
                         <flux:table.row :key="$charge->id">
                             <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
                             <flux:table.cell>{{ ucfirst($charge->car_id) }}</flux:table.cell>
-                            <flux:table.cell align="end">{{ number_format($charge->charged) }}</flux:table.cell>
+                            <flux:table.cell align="end">{{ number_format($charge->charged) }} kWh</flux:table.cell>
                             <flux:table.cell>
                                 <div class="flex items-center justify-end gap-1">
                                     <flux:button size="xs" icon="pencil" href="{{ route('new.car-charges.edit', $charge) }}" wire:navigate :aria-label="__('Edit')" />
@@ -132,7 +132,7 @@ class extends Component {
                     <flux:table.row>
                         <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
                         <flux:table.cell />
-                        <flux:table.cell align="end" class="font-semibold">{{ number_format($this->charges->sum('charged')) }}</flux:table.cell>
+                        <flux:table.cell align="end" class="font-semibold">{{ number_format($this->charges->sum('charged')) }} kWh</flux:table.cell>
                         <flux:table.cell />
                     </flux:table.row>
                 </flux:table.rows>

@@ -168,47 +168,49 @@ class extends Component {
 
     <flux:card class="overflow-x-auto">
         <flux:table>
+            <colgroup>
+                <col span="2" />
+                <col class="w-5" />
+                <col span="8" />
+            </colgroup>
             <thead data-flux-columns>
                 <tr>
                     <flux:table.column />
+                    <flux:table.column colspan="2" align="end" class="w-0 border-s border-zinc-800/10 dark:border-white/20">
+                        <div class="flex items-center justify-end gap-1 whitespace-normal text-end"><flux:icon name="sun" variant="mini" class="shrink-0 text-yellow-400" />{{ __('PV Production') }}</div>
+                    </flux:table.column>
                     <flux:table.column colspan="4" align="center" class="border-s border-zinc-800/10 dark:border-white/20">
                         <div class="flex items-center justify-center gap-1"><flux:icon name="sun" variant="mini" class="text-zinc-400" />{{ __('Peak (T1)') }}</div>
                     </flux:table.column>
                     <flux:table.column colspan="4" align="center" class="border-s border-zinc-800/10 dark:border-white/20">
                         <div class="flex items-center justify-center gap-1"><flux:icon name="moon" variant="mini" class="text-zinc-400" />{{ __('Off-Peak (T2)') }}</div>
                     </flux:table.column>
-                    <flux:table.column align="end" class="border-s border-zinc-800/10 dark:border-white/20 whitespace-nowrap">
-                        <div class="flex items-center justify-end gap-1"><flux:icon name="sun" variant="mini" class="text-yellow-400" />{{ __('PV Production') }}</div>
-                    </flux:table.column>
-                    <flux:table.column />
                 </tr>
                 <tr>
                     <flux:table.column />
+                    <flux:table.column class="border-s border-zinc-800/10 dark:border-white/20" />
+                    <flux:table.column class="w-5 px-0" />
                     @foreach (['t1', 't2'] as $zone)
                         <flux:table.column colspan="2" align="center" class="border-s border-zinc-800/10 dark:border-white/20">{{ __('Measured') }}</flux:table.column>
                         <flux:table.column colspan="2" align="center" class="border-s border-zinc-800/10 dark:border-white/20">{{ __('Balanced') }}</flux:table.column>
                     @endforeach
-                    <flux:table.column colspan="2" class="border-s border-zinc-800/10 dark:border-white/20" />
                 </tr>
                 <tr>
                     <flux:table.column>{{ __('Date') }}</flux:table.column>
+                    <flux:table.column class="border-s border-zinc-800/10 dark:border-white/20" />
+                    <flux:table.column class="w-5 px-0" />
                     @foreach (['t1', 't2'] as $zone)
                         <flux:table.column align="end" class="border-s border-zinc-800/10 dark:border-white/20"><div class="flex justify-end" title="{{ __('Consumed') }}"><flux:icon name="arrow-down-circle" variant="mini" class="text-red-400" /><span class="sr-only">{{ __('Consumed') }}</span></div></flux:table.column>
                         <flux:table.column align="end" class="border-s border-zinc-800/5 dark:border-white/10"><div class="flex justify-end" title="{{ __('Fed-in') }}"><flux:icon name="arrow-up-circle" variant="mini" class="text-green-400" /><span class="sr-only">{{ __('Fed-in') }}</span></div></flux:table.column>
                         <flux:table.column align="end" class="border-s border-zinc-800/10 dark:border-white/20"><div class="flex justify-end" title="{{ __('Consumed') }}"><flux:icon name="arrow-down-circle" variant="mini" class="text-red-400" /><span class="sr-only">{{ __('Consumed') }}</span></div></flux:table.column>
                         <flux:table.column align="end" class="border-s border-zinc-800/5 dark:border-white/10"><div class="flex justify-end" title="{{ __('Fed-in') }}"><flux:icon name="arrow-up-circle" variant="mini" class="text-green-400" /><span class="sr-only">{{ __('Fed-in') }}</span></div></flux:table.column>
                     @endforeach
-                    <flux:table.column class="border-s border-zinc-800/10 dark:border-white/20" />
-                    <flux:table.column class="w-0" />
                 </tr>
             </thead>
             <flux:table.rows>
                 @foreach ($this->days as $row)
                     <flux:table.row :key="$row['date']->toDateString()">
                         <flux:table.cell class="whitespace-nowrap">{{ $row['date']->format('D, d M Y') }}</flux:table.cell>
-                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
-                            <flux:table.cell align="end" @class(['border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ $row['meter'] ? number_format($row['meter']->$field, 3) : '' }}</flux:table.cell>
-                        @endforeach
                         <flux:table.cell align="end" class="border-s border-zinc-800/10 dark:border-white/20">
                             @if ($row['pvReading'])
                                 <span class="font-medium">{{ number_format($row['pvReading']->value) }}</span>
@@ -216,11 +218,14 @@ class extends Component {
                                 <span class="italic text-zinc-400" title="{{ __('Interpolated') }}">~{{ number_format($row['pvValue'], 1) }}</span>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell class="w-5 px-0">
                             @if ($row['pvReading'])
-                                <flux:button size="xs" icon="pencil" href="{{ route('new.pv-inverter.edit', $row['pvReading']) }}" wire:navigate />
+                                <flux:button size="xs" variant="ghost" icon="pencil" class="-my-1 size-5!" href="{{ route('new.pv-inverter.edit', $row['pvReading']) }}" wire:navigate />
                             @endif
                         </flux:table.cell>
+                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                            <flux:table.cell align="end" @class(['border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ $row['meter'] ? number_format($row['meter']->$field, 3) : '' }}</flux:table.cell>
+                        @endforeach
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
@@ -228,15 +233,15 @@ class extends Component {
                 <flux:table.rows>
                     <flux:table.row>
                         <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
-                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
-                            <flux:table.cell align="end" @class(['font-semibold', 'border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ number_format($this->totals[$field], 3) }}</flux:table.cell>
-                        @endforeach
                         <flux:table.cell align="end" class="font-semibold border-s border-zinc-800/10 dark:border-white/20" :title="$this->pvProduction && ! $this->pvProduction['exact'] ? __('Interpolated') : null">
                             @if ($this->pvProduction)
                                 {{ $this->pvProduction['exact'] ? '' : '~' }}{{ number_format($this->pvProduction['value'], 1) }}
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell />
+                        <flux:table.cell class="w-5 px-0" />
+                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                            <flux:table.cell align="end" @class(['font-semibold', 'border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ number_format($this->totals[$field], 3) }}</flux:table.cell>
+                        @endforeach
                     </flux:table.row>
                 </flux:table.rows>
             @endif
