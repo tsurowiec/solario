@@ -215,7 +215,7 @@ class extends Component {
                             @if ($row['pvReading'])
                                 <span class="font-medium">{{ number_format($row['pvReading']->value) }}</span>
                             @elseif ($row['pvValue'] !== null)
-                                <span class="italic text-zinc-400" title="{{ __('Interpolated') }}">~{{ number_format($row['pvValue'], 1) }}</span>
+                                <span class="italic text-zinc-400" title="{{ __('Interpolated') }}">~{{ number_format($row['pvValue']) }}</span>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="w-5 px-0">
@@ -235,7 +235,7 @@ class extends Component {
                         <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
                         <flux:table.cell align="end" class="font-semibold border-s border-zinc-800/10 dark:border-white/20" :title="$this->pvProduction && ! $this->pvProduction['exact'] ? __('Interpolated') : null">
                             @if ($this->pvProduction)
-                                {{ $this->pvProduction['exact'] ? '' : '~' }}{{ number_format($this->pvProduction['value'], 1) }}
+                                {{ $this->pvProduction['exact'] ? '' : '~' }}{{ number_format($this->pvProduction['value']) }}
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="w-5 px-0" />

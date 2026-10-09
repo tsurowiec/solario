@@ -43,7 +43,7 @@ class NewReadingsTest extends TestCase
             ->assertSee('9.876')           // meter values shown
             ->assertSee('1.234')
             ->assertSee('1,040')           // actual PV counter reading
-            ->assertSee('~1,020.0');       // interpolated PV counter on Oct 2
+            ->assertSee('~1,020');         // interpolated PV counter on Oct 2
     }
 
     public function test_meter_columns_are_grouped_by_tariff_in_field_order(): void
@@ -114,7 +114,7 @@ class NewReadingsTest extends TestCase
         // Oct 1–10: 1100 − 1000 (Sep 30), both actual readings.
         $component = Livewire::test('pages::new.readings.index');
         $this->assertSame(['value' => 100.0, 'exact' => true], $component->instance()->pvProduction);
-        $component->assertSeeInOrder(['Total', '100.0']);
+        $component->assertSeeInOrder(['Total', '100']);
     }
 
     public function test_total_pv_production_is_marked_when_interpolated(): void
@@ -124,7 +124,7 @@ class NewReadingsTest extends TestCase
 
         // Oct 1–5: 1050 − interpolated Sep 30 (900 + 150 × 10/15 = 1000)
         Livewire::test('pages::new.readings.index')
-            ->assertSeeInOrder(['Total', '~50.0']);
+            ->assertSeeInOrder(['Total', '~50']);
     }
 
     public function test_month_without_data_shows_a_message(): void
