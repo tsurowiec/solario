@@ -15,10 +15,19 @@ class PvInverterInterpolator
      * on either side of the date. After the last reading it is extrapolated
      * at the daily rate of the last two readings.
      *
+     * With $dayFraction below 1 (a day whose meter data covers only part of it), the value is
+     * estimated that far into the day: the previous day's value plus that part of the day's production.
+     *
      * @throws InvalidArgumentException if the date is before the first reading, or after the last one when there is only one
      */
-    public function forDate(Carbon $date): float
+    public function forDate(Carbon $date, float $dayFraction = 1.0): float
     {
+        if ($dayFraction < 1) {
+            $previous = $this->forDate($date->copy()->subDay());
+
+            return $previous + ($this->forDate($date) - $previous) * $dayFraction;
+        }
+
         $before = PvInverterReading::whereDate('date', '<=', $date->toDateString())
             ->orderByDesc('date')
             ->first();
@@ -59,10 +68,34 @@ class PvInverterInterpolator
      * Days before the first reading are left out; days after the last one are
      * extrapolated as in forDate() (left out when there is only one reading).
      * Loads the readings once, so it is suited for listing many days.
+     * Days in $dayFractions (Y-m-d => fraction) are estimated part way into the day as in forDate().
+     *
+     * @param  array<string, float>  $dayFractions
+     * @return array<string, float>
+     */
+    public function between(Carbon $from, Carbon $to, array $dayFractions = []): array
+    {
+        $values = $this->endOfDayValues($from->copy()->subDay(), $to);
+
+        foreach ($dayFractions as $date => $fraction) {
+            $previous = Carbon::parse($date)->subDay()->toDateString();
+
+            if ($fraction < 1 && isset($values[$date], $values[$previous])) {
+                $values[$date] = $values[$previous] + ($values[$date] - $values[$previous]) * $fraction;
+            }
+        }
+
+        unset($values[$from->copy()->subDay()->toDateString()]);
+
+        return $values;
+    }
+
+    /**
+     * Values at the end of every day in the range, as described in between().
      *
      * @return array<string, float>
      */
-    public function between(Carbon $from, Carbon $to): array
+    private function endOfDayValues(Carbon $from, Carbon $to): array
     {
         $readings = PvInverterReading::orderBy('date')->get()->values();
         $values = [];

@@ -19,33 +19,22 @@ php artisan migrate     # run pending migrations
 ## Key Conventions
 
 ### Livewire components
-Single-file components live in `resources/views/livewire/` with the `⚡` prefix (e.g. `⚡usage-card.blade.php`). The PHP class is defined inline at the top of the blade file using `new class extends Component`.
+Single-file components live in `resources/views/livewire/` with the `⚡` prefix (e.g. `⚡month-card.blade.php`). The PHP class is defined inline at the top of the blade file using `new class extends Component`.
 
 ### Value Objects
 Domain data is returned as readonly VOs from `app/Data/`. Use camelCase public properties. Derived fields are computed in the constructor.
 
 ### Services
-- `ReadingInterpolator` — always returns an array (internal, not exposed as VO)
-- `ReadingDiff` — returns `UsageSummary` VO; use `->day()`, `->month()`, `->year()`, `->season()`, or `->between()`. Passes the rates of the relevant `Season` into the VO
-- `PvInverterInterpolator` — `->forDate()` returns the PV inverter value (`float`) for a day, linearly proportioned between the surrounding `PvInverterReading`s; throws outside their range
+- `PvInverterInterpolator` — `->forDate()` returns the PV inverter value (`float`) for a day, linearly proportioned between the surrounding `PvInverterReading`s; throws outside their range. An optional day fraction estimates the value part way into a day (used for a last day the meter covers only partly: `MeterDailyReading::dayFraction()` is the share of the day's PV made in its covered hours, on a sine curve between sunrise and sunset at `PV_LATITUDE` / `PV_LONGITUDE`)
 - `EnergyUsage` — `->month()` returns `EnergySummary` VO (PV from inverter, raw consumed / fed-in from `MeterDailyReading`) for the month's full-data days, stopping at the first gap; null when none
-- `MeterCsvImporter` — imports the hourly meter CSV into `MeterDailyReading` (one row per complete day); returns `MeterImportResult` VO
-- `TauronMeterClient` — `->fetchCsv($from, $to)` logs in to Tauron eLicznik (ported from mlesniew/elicznik) and downloads the hourly meter CSV; the `meter:fetch` command imports it via `MeterCsvImporter` (scheduled daily at 06:00 Europe/Warsaw, last `TAURON_LOOKBACK_DAYS` days; needs `TAURON_USERNAME` / `TAURON_PASSWORD`)
-- `CarChargeUsage` — returns charged kWh (`int`) for a car; use `->month()`, `->year()`, `->season()`, or `->between()`
+- `MeterCsvImporter` — imports the hourly meter CSV into `MeterDailyReading` (one row per day, partial days included with their `hours`; a day is never overwritten by one with fewer hours); returns `MeterImportResult` VO
+- `TauronMeterClient` — `->fetchCsv($from, $to)` logs in to Tauron eLicznik (ported from mlesniew/elicznik) and downloads the hourly meter CSV; the `meter:fetch` command imports it via `MeterCsvImporter` (scheduled every 2 hours on the hour, Europe/Warsaw, last `TAURON_LOOKBACK_DAYS` days up to today; needs `TAURON_USERNAME` / `TAURON_PASSWORD`)
 
-### Pricing (per season)
-Tariff rates are stored per `Season` (`peak_rate`, `off_peak_rate`, `fed_in_ratio`). `Season::activeOn($date)` returns the season that applies to a date (the latest one that has started by then). Costs (`amount`, `pricePerUnit`, payable values) are calculated in the `UsageSummary` constructor. When no season applies, the VO falls back to its defaults: 1.40 / 0.70 PLN/kWh, fed-in ratio 0.80.
-
-**Legacy only.** The rebuild uses the `Price` model instead (per-kWh and monthly prices in PLN, `Price::activeOn($date)`); new code must not use season rates — see `AGENTS.md`.
+### Pricing
+Prices are stored in the `Price` model (per-kWh and monthly prices in PLN). `Price::activeOn($date)` returns the prices that apply to a date. Costs in `EnergySummary` are calculated from the active `Price`.
 
 ### Date handling
 Always use local date components (never `toISOString()` in JS) to avoid UTC offset issues. In JS: `getFullYear()` / `getMonth()` / `getDate()`.
 
 ### Code style
 Pint with default Laravel ruleset. Run `composer lint` before committing.
-
-## Rebuild in progress
-
-The app is being rebuilt side by side (new features next to old ones, then the old ones are removed). Read and follow:
-
-@AGENTS.md

@@ -6,36 +6,17 @@
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('new.dashboard') }}" wire:navigate />
+                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('New')" class="grid">
-                    {{-- Rebuilt features go here (see AGENTS.md) --}}
-                    <flux:sidebar.item icon="home" :href="route('new.dashboard')" :current="request()->routeIs('new.dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </flux:sidebar.item>
-
-                    <flux:sidebar.item icon="list-bullet" :href="route('new.readings.index')" :current="request()->routeIs('new.readings.*', 'new.pv-inverter.edit')" wire:navigate>
-                        {{ __('Readings') }}
-                    </flux:sidebar.item>
-
-                    <flux:sidebar.item icon="bolt" :href="route('new.car-charges.index')" :current="request()->routeIs('new.car-charges.*')" wire:navigate>
-                        {{ __('Car Charges') }}
-                    </flux:sidebar.item>
-
-                    <flux:sidebar.item icon="banknotes" :href="route('new.prices.index')" :current="request()->routeIs('new.prices.*')" wire:navigate>
-                        {{ __('Prices') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-
-                <flux:sidebar.group :heading="__('Old')" class="grid">
+                <flux:sidebar.group class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="list-bullet" :href="route('readings.index')" :current="request()->routeIs('readings.*')" wire:navigate>
+                    <flux:sidebar.item icon="list-bullet" :href="route('readings.index')" :current="request()->routeIs('readings.*', 'pv-inverter.edit')" wire:navigate>
                         {{ __('Readings') }}
                     </flux:sidebar.item>
 
@@ -43,8 +24,8 @@
                         {{ __('Car Charges') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="calendar" :href="route('seasons.index')" :current="request()->routeIs('seasons.*')" wire:navigate>
-                        {{ __('Seasons') }}
+                    <flux:sidebar.item icon="banknotes" :href="route('prices.index')" :current="request()->routeIs('prices.*')" wire:navigate>
+                        {{ __('Prices') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
@@ -68,7 +49,7 @@
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle icon="bars-3" inset="left" />
 
-            <x-app-logo href="{{ route('new.dashboard') }}" wire:navigate />
+            <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
 
             <flux:spacer />
 

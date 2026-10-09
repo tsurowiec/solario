@@ -42,4 +42,10 @@ return [
         'lookback_days' => env('TAURON_LOOKBACK_DAYS', 7),
     ],
 
+    // Location of the PV installation, for sunrise / sunset when estimating a partial day's production.
+    'pv' => [
+        'latitude' => (float) env('PV_LATITUDE', 50.06),
+        'longitude' => (float) env('PV_LONGITUDE', 19.94),
+    ],
+
 ];

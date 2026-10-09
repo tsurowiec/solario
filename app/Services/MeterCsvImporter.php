@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Data\MeterImportResult;
 use App\Models\MeterDailyReading;
-use Carbon\Carbon;
 use InvalidArgumentException;
 
 /**
@@ -15,15 +14,11 @@ use InvalidArgumentException;
  * Only consumed and fed-in rows are read; the balanced values are calculated per hour
  * (hourly net-metering: balanced consumed = max(0, consumed − fed-in), balanced fed-in the reverse),
  * so the CSV's own balanced rows, published later by the operator, are ignored.
- * Only complete days (every hour present for both types) are saved; existing days are overwritten.
+ * Partial days are saved too, with the number of hours they cover, so they fill in on later imports.
+ * An existing day is overwritten unless it already covers more hours than the imported one.
  */
 class MeterCsvImporter
 {
-    /**
-     * Local timezone of the meter, used to know how many hours a day has (DST days have 23 or 25).
-     */
-    private const TIMEZONE = 'Europe/Warsaw';
-
     private const STATUS = 'licznik';
 
     private const TYPES = [
@@ -83,27 +78,35 @@ class MeterCsvImporter
         ksort($totals);
 
         $imported = [];
+        $incomplete = [];
         $skipped = [];
 
         foreach ($totals as $date => $fields) {
-            if (! $this->isComplete($date, $hourCounts[$date])) {
+            $hours = $this->hours($hourCounts[$date]);
+
+            // Look up via whereDate: the date cast stores "Y-m-d 00:00:00", so a plain where wouldn't match.
+            $reading = MeterDailyReading::whereDate('date', $date)->first() ?? new MeterDailyReading(['date' => $date]);
+
+            if ($reading->hours > $hours) {
                 $skipped[] = $date;
 
                 continue;
             }
 
-            $values = [];
+            $values = ['hours' => $hours];
             foreach (MeterDailyReading::VALUE_FIELDS as $field) {
                 $values[$field] = ($fields[$field] ?? 0) / 1000;
             }
 
-            // Look up via whereDate: the date cast stores "Y-m-d 00:00:00", so a plain where wouldn't match.
-            $reading = MeterDailyReading::whereDate('date', $date)->first() ?? new MeterDailyReading(['date' => $date]);
             $reading->fill($values)->save();
             $imported[] = $date;
+
+            if ($hours < MeterDailyReading::dayLength($date)) {
+                $incomplete[] = $date;
+            }
         }
 
-        return new MeterImportResult($imported, $skipped);
+        return new MeterImportResult($imported, $incomplete, $skipped);
     }
 
     /**
@@ -144,20 +147,13 @@ class MeterCsvImporter
     }
 
     /**
+     * Hours a day covers: the fewest hourly rows of any type.
+     *
      * @param  array<string, int>  $counts  number of hourly rows per type
      */
-    private function isComplete(string $date, array $counts): bool
+    private function hours(array $counts): int
     {
-        $start = Carbon::parse($date, self::TIMEZONE)->startOfDay();
-        $hours = (int) $start->diffInHours($start->copy()->addDay()->startOfDay());
-
-        foreach (array_keys(self::TYPES) as $type) {
-            if (($counts[$type] ?? 0) !== $hours) {
-                return false;
-            }
-        }
-
-        return true;
+        return min(array_map(fn (string $type) => $counts[$type] ?? 0, array_keys(self::TYPES)));
     }
 
     private function toWh(string $value): int

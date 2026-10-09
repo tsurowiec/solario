@@ -7,24 +7,23 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Add Car Charge')]
-#[Layout('layouts.app', ['title' => 'Add Car Charge'])]
+new #[Title('Edit Car Charge')]
+#[Layout('layouts.app', ['title' => 'Edit Car Charge'])]
 class extends Component {
+
+    public CarCharge $charge;
 
     public string $date = '';
     #[Locked]
     public string $car_id = '';
     public int|string $charged = '';
 
-    /** Month (Y-m) of the list we came from; Cancel returns there. */
-    #[Locked]
-    public string $month = '';
-
-    public function mount(): void
+    public function mount(CarCharge $charge): void
     {
-        $this->date = today()->toDateString();
-        $this->month = preg_match('/^\d{4}-\d{2}$/', (string) request()->query('month')) ? request()->query('month') : '';
-        $this->car_id = in_array(request()->query('car'), CarCharge::CARS, true) ? request()->query('car') : CarCharge::CARS[0];
+        $this->charge = $charge;
+        $this->date = $charge->date->toDateString();
+        $this->car_id = $charge->car_id;
+        $this->charged = $charge->charged;
     }
 
     public function save(): void
@@ -35,11 +34,13 @@ class extends Component {
             'charged' => ['required', 'integer', 'min:0'],
         ]);
 
-        $charge = CarCharge::create($validated);
+        $this->charge->update($validated);
 
-        Flux::toast(variant: 'success', text: __('Charge saved.'));
+        Flux::toast(variant: 'success', text: __('Charge updated.'));
 
-        $this->redirect(route('car-charges.index', ['month' => $charge->date->format('Y-m')]), navigate: true);
+        $this->redirect(route('car-charges.index', [
+            'month' => $this->charge->date->format('Y-m'),
+        ]), navigate: true);
     }
 
 }; ?>
@@ -61,8 +62,8 @@ class extends Component {
 
 <div class="mx-auto max-w-lg w-full space-y-6">
     <div>
-        <flux:heading size="xl" class="mb-1">{{ __('Add Car Charge') }}</flux:heading>
-        <flux:subheading class="mb-6">{{ __('Log energy charged for a car.') }}</flux:subheading>
+        <flux:heading size="xl" class="mb-1">{{ __('Edit Car Charge') }}</flux:heading>
+        <flux:subheading class="mb-6">{{ __('Update the energy charged for a car.') }}</flux:subheading>
 
         <form wire:submit="save" class="space-y-5">
             <flux:card>
@@ -86,7 +87,7 @@ class extends Component {
                 <flux:button variant="primary" type="submit">
                     {{ __('Save Charge') }}
                 </flux:button>
-                <flux:button variant="ghost" href="{{ route('car-charges.index', array_filter(['month' => $month])) }}" wire:navigate>{{ __('Cancel') }}</flux:button>
+                <flux:button variant="ghost" href="{{ route('car-charges.index', ['month' => $charge->date->format('Y-m')]) }}" wire:navigate>{{ __('Cancel') }}</flux:button>
             </div>
         </form>
     </div>

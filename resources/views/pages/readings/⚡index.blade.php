@@ -1,91 +1,262 @@
 <?php
 
-use App\Models\Reading;
+use App\Models\MeterDailyReading;
+use App\Models\PvInverterReading;
+use App\Services\PvInverterInterpolator;
+use Carbon\Carbon;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 new #[Title('Readings')]
 #[Layout('layouts.app', ['title' => 'Readings'])]
 class extends Component {
-    use WithPagination;
 
-    public function delete(Reading $reading): void
+    /** Selected month (Y-m); the current month by default. */
+    #[Url]
+    public string $month = '';
+
+    public function mount(): void
     {
-        if ($this->undeletableIds()->contains($reading->id)) {
-            return;
+        if (! preg_match('/^\d{4}-\d{2}$/', $this->month)) {
+            $this->month = today()->format('Y-m');
         }
-
-        $reading->delete();
     }
 
-    public function rendering($view)
+    /**
+     * Months to choose from (Y-m => label), newest first: every month with meter or PV data, plus the current and selected month.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function months(): array
     {
-        $view->with('readings', Reading::orderBy('date', 'desc')->paginate(15));
-        $view->with('undeletableIds', $this->undeletableIds());
+        return MeterDailyReading::pluck('date')
+            ->merge(PvInverterReading::pluck('date'))
+            ->map(fn ($date) => Carbon::parse($date)->format('Y-m'))
+            ->push(today()->format('Y-m'), $this->month)
+            ->unique()
+            ->sortDesc()
+            ->mapWithKeys(fn (string $ym) => [$ym => Carbon::createFromFormat('!Y-m', $ym)->format('F Y')])
+            ->all();
     }
 
-    private function undeletableIds()
+    /**
+     * One row per day of the selected month (newest first), limited to the range
+     * between the first and the last day with any meter or PV data.
+     *
+     * @return list<array{date: Carbon, meter: ?MeterDailyReading, pvReading: ?PvInverterReading, pvValue: ?float}>
+     */
+    #[Computed]
+    public function days(): array
     {
-        $ids = Reading::query()
-            ->joinSub(
-                Reading::selectRaw("max(date) as max_date, strftime('%Y-%m', date) as ym")->groupByRaw("strftime('%Y-%m', date)"),
-                'latest',
-                fn ($join) => $join->on('readings.date', '=', 'latest.max_date'),
-            )
-            ->pluck('readings.id');
+        $bounds = collect([
+            MeterDailyReading::oldest('date')->value('date'),
+            MeterDailyReading::latest('date')->value('date'),
+            PvInverterReading::oldest('date')->value('date'),
+            PvInverterReading::latest('date')->value('date'),
+        ])->filter()->map(fn ($date) => Carbon::parse($date)->startOfDay());
 
-        $firstId = Reading::orderBy('date')->value('id');
-
-        if ($firstId) {
-            $ids->push($firstId);
+        if ($bounds->isEmpty()) {
+            return [];
         }
 
-        return $ids->unique();
+        $start = Carbon::createFromFormat('!Y-m', $this->month);
+        $from = $start->copy()->max($bounds->min());
+        $to = $start->copy()->endOfMonth()->startOfDay()->min($bounds->max());
+
+        if ($from->gt($to)) {
+            return [];
+        }
+
+        $meter = MeterDailyReading::whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
+            ->get()
+            ->keyBy(fn (MeterDailyReading $r) => $r->date->toDateString());
+
+        $pvReadings = PvInverterReading::whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
+            ->get()
+            ->keyBy(fn (PvInverterReading $r) => $r->date->toDateString());
+
+        $pv = app(PvInverterInterpolator::class)->between($from, $to, $meter->map->dayFraction()->all());
+
+        $rows = [];
+
+        for ($day = $to->copy(); $day->gte($from); $day->subDay()) {
+            $date = $day->toDateString();
+
+            $rows[] = [
+                'date' => $day->copy(),
+                'meter' => $meter->get($date),
+                'pvReading' => $pvReadings->get($date),
+                'pvValue' => $pv[$date] ?? null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Sum of each meter field over the days of the selected month that have meter data.
+     *
+     * @return array<string, float>
+     */
+    #[Computed]
+    public function totals(): array
+    {
+        $meter = collect($this->days)->pluck('meter')->filter();
+
+        return collect(MeterDailyReading::VALUE_FIELDS)
+            ->mapWithKeys(fn (string $field) => [$field => (float) $meter->sum($field)])
+            ->all();
+    }
+
+    /**
+     * PV produced over the listed days: counter on the last day − counter on the day before the first.
+     * A last day partly covered by meter data counts only that part of its production.
+     * Exact only when both counters are actual readings; null when either cannot be determined.
+     *
+     * @return array{value: float, exact: bool}|null
+     */
+    #[Computed]
+    public function pvProduction(): ?array
+    {
+        $days = $this->days;
+
+        if (! $days) {
+            return null;
+        }
+
+        $to = $days[0]['date'];
+        $before = $days[count($days) - 1]['date']->copy()->subDay();
+
+        // The last day may be only partly covered by meter data, so PV is counted up to that point.
+        $fraction = $days[0]['meter']?->dayFraction() ?? 1.0;
+        $pv = app(PvInverterInterpolator::class)->between($before, $to, [$to->toDateString() => $fraction]);
+
+        if (! isset($pv[$before->toDateString()], $pv[$to->toDateString()])) {
+            return null;
+        }
+
+        $exact = $fraction >= 1
+            && PvInverterReading::whereDate('date', $before->toDateString())->exists()
+            && PvInverterReading::whereDate('date', $to->toDateString())->exists();
+
+        return [
+            'value' => $pv[$to->toDateString()] - $pv[$before->toDateString()],
+            'exact' => $exact,
+        ];
     }
 
 }; ?>
 
-<div class="mx-auto max-w-4xl w-full space-y-6">
-    <div class="flex items-center justify-between">
+<div class="mx-auto max-w-6xl w-full space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
         <flux:heading size="xl">{{ __('Readings') }}</flux:heading>
-        <flux:button href="{{ route('readings.create') }}" icon="plus" wire:navigate>{{ __('Add Reading') }}</flux:button>
+        <div class="flex flex-wrap gap-2">
+            <flux:button href="{{ route('meter-import.create') }}" icon="arrow-up-tray" wire:navigate>{{ __('Import meter data') }}</flux:button>
+            <flux:button href="{{ route('pv-inverter.create') }}" icon="sun" wire:navigate>{{ __('PV inverter data') }}</flux:button>
+        </div>
     </div>
 
-    <flux:card>
+    <div class="flex justify-end">
+        <flux:select wire:model.live="month" class="max-w-48" :aria-label="__('Month')">
+            @foreach ($this->months as $value => $label)
+                <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+            @endforeach
+        </flux:select>
+    </div>
+
+    <flux:card class="overflow-x-auto">
         <flux:table>
-            <flux:table.columns>
-                <flux:table.column>{{ __('Date') }}</flux:table.column>
-                <flux:table.column>{{ __('PV Generated') }}</flux:table.column>
-                <flux:table.column>{{ __('Peak Consumed') }}</flux:table.column>
-                <flux:table.column>{{ __('Off-Peak Consumed') }}</flux:table.column>
-                <flux:table.column>{{ __('Peak Fed-In') }}</flux:table.column>
-                <flux:table.column>{{ __('Off-Peak Fed-In') }}</flux:table.column>
-                <flux:table.column class="w-0" />
-            </flux:table.columns>
+            <colgroup>
+                <col span="2" />
+                <col class="w-5" />
+                <col span="8" />
+            </colgroup>
+            <thead data-flux-columns>
+                <tr>
+                    <flux:table.column />
+                    <flux:table.column colspan="2" align="center" class="w-0 border-s border-zinc-800/10 dark:border-white/20">
+                        <div class="flex items-center justify-center gap-1 whitespace-normal text-center"><flux:icon name="sun" variant="mini" class="shrink-0 text-yellow-400" />{{ __('Inverter') }}</div>
+                    </flux:table.column>
+                    <flux:table.column colspan="4" align="center" class="border-s border-zinc-800/10 dark:border-white/20">
+                        <div class="flex items-center justify-center gap-1"><flux:icon name="sun" variant="mini" class="text-zinc-400" />{{ __('Peak (T1)') }}</div>
+                    </flux:table.column>
+                    <flux:table.column colspan="4" align="center" class="border-s border-zinc-800/10 dark:border-white/20">
+                        <div class="flex items-center justify-center gap-1"><flux:icon name="moon" variant="mini" class="text-zinc-400" />{{ __('Off-Peak (T2)') }}</div>
+                    </flux:table.column>
+                </tr>
+                <tr>
+                    <flux:table.column />
+                    <flux:table.column class="border-s border-zinc-800/10 dark:border-white/20" />
+                    <flux:table.column class="w-5 px-0" />
+                    @foreach (['t1', 't2'] as $zone)
+                        <flux:table.column colspan="2" align="center" class="border-s border-zinc-800/10 dark:border-white/20">{{ __('Measured') }}</flux:table.column>
+                        <flux:table.column colspan="2" align="center" class="border-s border-zinc-800/10 dark:border-white/20">{{ __('Balanced') }}</flux:table.column>
+                    @endforeach
+                </tr>
+                <tr>
+                    <flux:table.column>{{ __('Date') }}</flux:table.column>
+                    <flux:table.column class="border-s border-zinc-800/10 dark:border-white/20" />
+                    <flux:table.column class="w-5 px-0" />
+                    @foreach (['t1', 't2'] as $zone)
+                        <flux:table.column align="end" class="border-s border-zinc-800/10 dark:border-white/20"><div class="flex justify-end" title="{{ __('Consumed') }}"><flux:icon name="arrow-down-circle" variant="mini" class="text-red-400" /><span class="sr-only">{{ __('Consumed') }}</span></div></flux:table.column>
+                        <flux:table.column align="end" class="border-s border-zinc-800/5 dark:border-white/10"><div class="flex justify-end" title="{{ __('Fed-in') }}"><flux:icon name="arrow-up-circle" variant="mini" class="text-green-400" /><span class="sr-only">{{ __('Fed-in') }}</span></div></flux:table.column>
+                        <flux:table.column align="end" class="border-s border-zinc-800/10 dark:border-white/20"><div class="flex justify-end" title="{{ __('Consumed') }}"><flux:icon name="arrow-down-circle" variant="mini" class="text-red-400" /><span class="sr-only">{{ __('Consumed') }}</span></div></flux:table.column>
+                        <flux:table.column align="end" class="border-s border-zinc-800/5 dark:border-white/10"><div class="flex justify-end" title="{{ __('Fed-in') }}"><flux:icon name="arrow-up-circle" variant="mini" class="text-green-400" /><span class="sr-only">{{ __('Fed-in') }}</span></div></flux:table.column>
+                    @endforeach
+                </tr>
+            </thead>
             <flux:table.rows>
-                @foreach ($readings as $reading)
-                    <flux:table.row :key="$reading->id">
-                        <flux:table.cell>{{ $reading->date->format('d M Y') }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($reading->pv_generated) }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($reading->peak_consumed) }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($reading->off_peak_consumed) }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($reading->peak_fed_in) }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($reading->off_peak_fed_in) }}</flux:table.cell>
-                        <flux:table.cell>
-                            <div class="flex items-center gap-1">
-                                <flux:button size="xs" icon="pencil" href="{{ route('readings.edit', $reading) }}" wire:navigate />
-                                @unless ($undeletableIds->contains($reading->id))
-                                    <flux:button variant="danger" size="xs" icon="trash" wire:click="delete({{ $reading->id }})" wire:confirm="{{ __('Are you sure you want to delete this reading?') }}" />
-                                @endunless
-                            </div>
+                @foreach ($this->days as $row)
+                    <flux:table.row :key="$row['date']->toDateString()">
+                        <flux:table.cell class="whitespace-nowrap tabular-nums">
+                            {{ $row['date']->toDateString() }}
+                            @if ($row['meter'] && $row['meter']->hours < \App\Models\MeterDailyReading::dayLength($row['date']))
+                                <span class="text-yellow-500" title="{{ __('Incomplete meter data') }}">[{{ $row['meter']->hours }}h]</span>
+                            @endif
                         </flux:table.cell>
+                        <flux:table.cell align="end" class="border-s border-zinc-800/10 dark:border-white/20">
+                            @if ($row['pvReading'])
+                                <span class="font-medium">{{ number_format($row['pvReading']->value) }}</span>
+                            @elseif ($row['pvValue'] !== null)
+                                <span class="italic text-zinc-400" title="{{ __('Interpolated') }}">~{{ number_format($row['pvValue']) }}</span>
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell class="w-5 px-0">
+                            @if ($row['pvReading'])
+                                <flux:button size="xs" variant="ghost" icon="pencil" class="-my-1 size-5!" href="{{ route('pv-inverter.edit', $row['pvReading']) }}" wire:navigate />
+                            @endif
+                        </flux:table.cell>
+                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                            <flux:table.cell align="end" @class(['border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ $row['meter'] ? number_format($row['meter']->$field, 3) : '' }}</flux:table.cell>
+                        @endforeach
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
+            @if ($this->days)
+                <flux:table.rows>
+                    <flux:table.row>
+                        <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
+                        <flux:table.cell align="end" class="font-semibold border-s border-zinc-800/10 dark:border-white/20" :title="$this->pvProduction && ! $this->pvProduction['exact'] ? __('Interpolated') : null">
+                            @if ($this->pvProduction)
+                                {{ $this->pvProduction['exact'] ? '' : '~' }}{{ number_format($this->pvProduction['value']) }}
+                            @endif
+                        </flux:table.cell>
+                        <flux:table.cell class="w-5 px-0" />
+                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                            <flux:table.cell align="end" @class(['font-semibold', 'border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ number_format($this->totals[$field], 3) }}</flux:table.cell>
+                        @endforeach
+                    </flux:table.row>
+                </flux:table.rows>
+            @endif
         </flux:table>
+        @unless ($this->days)
+            <flux:text class="mt-4">{{ __('No readings in this month.') }}</flux:text>
+        @endunless
     </flux:card>
-
-    {{ $readings->links() }}
 </div>

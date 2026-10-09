@@ -1,72 +1,67 @@
 <?php
 
-use App\Models\Season;
-use App\Services\ReadingDiff;
+use App\Services\EnergyUsage;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component {
 
-    public int $season = 0;
+    /** Any date within the last month shown (Y-m-d). */
+    public string $month = '';
 
-    private function resolveSeason(): ?Season
+    /**
+     * Up to 12 months ending at $month; leading months without data are dropped.
+     *
+     * @return array<string, \App\Data\EnergySummary|null> keyed by the first day of the month (Y-m-d)
+     */
+    #[Computed]
+    public function summaries(): array
     {
-        return $this->season !== 0
-            ? Season::findOrFail($this->season)
-            : Season::orderByDesc('starting_date')->first();
+        $usage = app(EnergyUsage::class);
+        $last = Carbon::parse($this->month)->startOfMonth();
+        $summaries = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $month = $last->copy()->subMonthsNoOverflow($i);
+            $summary = $usage->month($month);
+
+            if ($summary === null && $summaries === []) {
+                continue;
+            }
+
+            $summaries[$month->toDateString()] = $summary;
+        }
+
+        return $summaries;
     }
 
+    /**
+     * Per month: peak payable, off-peak payable and the rest of the total usage (sun),
+     * as % of the total usage (and in kWh for the tooltip).
+     */
     #[Computed]
     public function chartData(): array
     {
-        $diff = app(ReadingDiff::class);
-        $season = $this->resolveSeason();
-        $start = $season
-            ? Carbon::parse($season->starting_date)->startOfMonth()
-            : Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfMonth();
-        $lastReading = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
-        $lastReading = $season ? $season->endDate()->min($lastReading) : $lastReading;
-        $months = max(0, (int) $start->diffInMonths($lastReading->copy()->startOfMonth()));
-
         $categories = [];
-        $monthly    = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => [], 'peakKwh' => [], 'offPeakKwh' => [], 'sunKwh' => []];
-        $cumulative = ['peak' => [], 'offPeak' => [], 'sun' => [], 'totalUsage' => [], 'peakKwh' => [], 'offPeakKwh' => [], 'sunKwh' => []];
+        $percent = ['sun' => [], 'offPeak' => [], 'peak' => []];
+        $kwh = ['sun' => [], 'offPeak' => [], 'peak' => []];
 
-        $firstReading = Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfDay();
-        $seasonFrom = $season
-            ? Carbon::parse($season->starting_date)->subDay()->max($firstReading)
-            : $firstReading;
-        $lastReadingDay = $lastReading->copy()->startOfDay();
+        foreach ($this->summaries as $month => $usage) {
+            $categories[] = Carbon::parse($month)->format('M');
 
-        for ($i = 0; $i <= $months; $i++) {
-            $month = $start->copy()->addMonthsNoOverflow($i);
-            $usage = $diff->month($month);
+            $total = $usage?->totalUsage ?? 0;
+            $peak = $usage?->peakPayable ?? 0;
+            $offPeak = $usage?->offPeakPayable ?? 0;
+            $sun = max(0, $total - $peak - $offPeak);
 
-            $categories[] = $month->format('M');
-
-            $tu = $usage?->totalUsage ?? 0;
-            $monthly['peak'][]       = round($usage ? $usage->peakRatio * 100 : 0.0, 1);
-            $monthly['offPeak'][]    = round($usage ? $usage->offPeakRatio * 100 : 0.0, 1);
-            $monthly['sun'][]        = round($usage ? $usage->sunRatio * 100 : 0.0, 1);
-            $monthly['totalUsage'][] = $tu;
-            $monthly['peakKwh'][]    = $usage ? round($usage->peakRatio * $tu) : 0;
-            $monthly['offPeakKwh'][] = $usage ? round($usage->offPeakRatio * $tu) : 0;
-            $monthly['sunKwh'][]     = $usage ? round($usage->sunRatio * $tu) : 0;
-
-            $cumTo  = $month->copy()->endOfMonth()->startOfDay()->min($lastReadingDay);
-            $cumUsage = $diff->between($seasonFrom, $cumTo);
-            $cumTu = $cumUsage->totalUsage;
-            $cumulative['peak'][]       = round($cumUsage->peakRatio * 100, 1);
-            $cumulative['offPeak'][]    = round($cumUsage->offPeakRatio * 100, 1);
-            $cumulative['sun'][]        = round($cumUsage->sunRatio * 100, 1);
-            $cumulative['totalUsage'][] = $cumTu;
-            $cumulative['peakKwh'][]    = round($cumUsage->peakRatio * $cumTu);
-            $cumulative['offPeakKwh'][] = round($cumUsage->offPeakRatio * $cumTu);
-            $cumulative['sunKwh'][]     = round($cumUsage->sunRatio * $cumTu);
+            foreach (compact('sun', 'offPeak', 'peak') as $key => $value) {
+                $kwh[$key][] = round($value);
+                $percent[$key][] = $total > 0 ? round($value / $total * 100, 1) : 0;
+            }
         }
 
-        return compact('categories', 'monthly', 'cumulative');
+        return compact('categories', 'percent', 'kwh');
     }
 
 }; ?>
@@ -74,8 +69,6 @@ new class extends Component {
 <flux:card
     x-data="{
         chart: null,
-        mode: 'monthly',
-        data: null,
 
         async init() {
             await new Promise(resolve => {
@@ -83,12 +76,11 @@ new class extends Component {
                 window.addEventListener('apexcharts-ready', resolve, { once: true });
             });
 
-            this.data = JSON.parse(this.$el.dataset.chartData);
+            const data = JSON.parse(this.$el.dataset.chartData);
             const isDark = document.documentElement.classList.contains('dark');
             const textColor = isDark ? '#a1a1aa' : '#71717a';
             const gridColor = isDark ? '#27272a' : '#e4e4e7';
-
-            const self = this;
+            const keys = ['sun', 'offPeak', 'peak'];
 
             this.chart = new window.ApexCharts(this.$refs.chart, {
                 chart: {
@@ -99,9 +91,13 @@ new class extends Component {
                     background: 'transparent',
                     fontFamily: 'inherit',
                 },
-                series: this.buildSeries('monthly'),
+                series: [
+                    { name: 'Sun',              data: data.percent.sun },
+                    { name: 'Off-Peak Payable', data: data.percent.offPeak },
+                    { name: 'Peak Payable',     data: data.percent.peak },
+                ],
                 xaxis: {
-                    categories: this.data.categories,
+                    categories: data.categories,
                     labels: { style: { colors: textColor } },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
@@ -131,38 +127,17 @@ new class extends Component {
                 tooltip: {
                     theme: isDark ? 'dark' : 'light',
                     y: {
-                        formatter(v, { seriesIndex, dataPointIndex }) {
-                            const d = self.data[self.mode];
-                            const keys = ['sunKwh', 'offPeakKwh', 'peakKwh'];
-                            const kwh = d[keys[seriesIndex]][dataPointIndex];
-                            return v.toFixed(1) + '% (' + kwh + ' kWh)';
-                        },
+                        formatter: (v, { seriesIndex, dataPointIndex }) =>
+                            v.toFixed(1) + '% (' + data.kwh[keys[seriesIndex]][dataPointIndex] + ' kWh)',
                     },
                 },
             });
 
             this.chart.render();
         },
-
-        buildSeries(mode) {
-            const d = this.data[mode];
-            return [
-                { name: 'Sun Generated', data: d.sun },
-                { name: 'Off-Peak',      data: d.offPeak },
-                { name: 'Peak',          data: d.peak },
-            ];
-        },
-
-        toggle() {
-            this.mode = this.mode === 'monthly' ? 'cumulative' : 'monthly';
-            this.chart.updateSeries(this.buildSeries(this.mode));
-        },
     }"
     data-chart-data="{{ json_encode($this->chartData) }}"
 >
-    <div class="flex items-center justify-between gap-4 mb-4">
-        <flux:heading size="lg" class="truncate" x-text="'Energy Split — ' + (mode === 'monthly' ? 'Monthly' : 'Cumulative')"></flux:heading>
-        <flux:button class="" x-on:click="toggle()" >Switch chart type</flux:button>
-    </div>
+    <flux:heading size="lg" class="mb-4">{{ __('Energy Split') }}</flux:heading>
     <div x-ref="chart"></div>
 </flux:card>

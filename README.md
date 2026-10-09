@@ -4,10 +4,11 @@ Solar energy dashboard for tracking PV generation, consumption, and grid feed-in
 
 ## Features
 
-- Log daily meter readings (PV generated, peak/off-peak consumed, peak/off-peak fed-in)
-- Linear interpolation between readings for any date range
-- Monthly usage summaries with self-consumption ratio
-- Price calculation based on peak/off-peak tariffs
+- Hourly grid meter data (consumed / fed-in, peak / off-peak) imported from a CSV or fetched daily from Tauron eLicznik (`meter:fetch`)
+- PV inverter readings, linearly interpolated per day
+- Car charge log per car
+- Prices (per-kWh and monthly fees) with validity dates
+- Dashboard with monthly charts and a month summary: self-consumption, net-metering balance, costs, and the split between cars and household
 - Passkey authentication via Laravel Fortify
 
 ## Requirements
@@ -43,10 +44,14 @@ composer lint       # auto-fix with Pint
 
 | Path | Purpose |
 |------|---------|
-| `app/Models/Reading.php` | Meter reading model — one row per recorded date |
-| `app/Services/ReadingInterpolator.php` | Linear interpolation of meter values between two readings |
-| `app/Services/ReadingDiff.php` | Computes delta between two interpolated readings; returns `UsageSummary` |
-| `app/Services/PriceCalculator.php` | Calculates monthly bill from a `UsageSummary` using peak/off-peak tariff rates |
-| `app/Data/UsageSummary.php` | Readonly value object carrying all usage metrics for a period |
-| `resources/views/livewire/⚡usage-card.blade.php` | Livewire component showing monthly usage summary |
-| `resources/views/pages/readings/⚡create.blade.php` | Form for entering new meter readings |
+| `app/Models/MeterDailyReading.php` | Grid meter totals, one row per day (`hours` = hours covered) |
+| `app/Models/PvInverterReading.php` | PV inverter counter readings |
+| `app/Models/CarCharge.php` | Charged kWh per car and date |
+| `app/Models/Price.php` | Prices; `Price::activeOn($date)` |
+| `app/Services/MeterCsvImporter.php` | Imports the hourly meter CSV into `MeterDailyReading` |
+| `app/Services/TauronMeterClient.php` | Downloads the meter CSV from Tauron eLicznik |
+| `app/Services/PvInverterInterpolator.php` | PV value for a day, interpolated between inverter readings |
+| `app/Services/EnergyUsage.php` | Monthly `EnergySummary` (usage, balance, costs) |
+| `app/Data/EnergySummary.php` | Readonly value object with the month's metrics |
+| `resources/views/pages/` | Livewire pages: dashboard, readings, meter import, PV inverter, car charges, prices |
+| `resources/views/livewire/` | Dashboard components: month card, monthly chart, energy split chart |

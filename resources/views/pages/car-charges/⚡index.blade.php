@@ -1,130 +1,144 @@
 <?php
 
 use App\Models\CarCharge;
+use App\Services\EnergyUsage;
+use Carbon\Carbon;
+use Flux\Flux;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 new #[Title('Car Charges')]
 #[Layout('layouts.app', ['title' => 'Car Charges'])]
 class extends Component {
-    use WithPagination;
 
-    public string $car = '';
+    /** Selected month (Y-m); the current month by default. */
+    #[Url]
+    public string $month = '';
 
     public function mount(): void
     {
-        if ($this->car === '') {
-            $this->car = (string) CarCharge::orderBy('car_id')->value('car_id');
+        if (! preg_match('/^\d{4}-\d{2}$/', $this->month)) {
+            $this->month = today()->format('Y-m');
         }
-    }
-
-    public function selectCar(string $car): void
-    {
-        $this->car = $car;
-        $this->resetPage();
-    }
-
-    public function merge(int $id): void
-    {
-        if ($this->car === '') {
-            return;
-        }
-
-        $charge = CarCharge::findOrFail($id);
-
-        $next = CarCharge::where('car_id', $charge->car_id)
-            ->where('date', '>', $charge->date)
-            ->orderBy('date', 'asc')
-            ->first();
-
-        if (! $next || ! $next->date->isSameMonth($charge->date)) {
-            return;
-        }
-
-        $next->increment('charged', $charge->charged);
-        $charge->delete();
     }
 
     public function delete(int $id): void
     {
         CarCharge::findOrFail($id)->delete();
+
+        unset($this->charges, $this->months);
+
+        Flux::toast(variant: 'success', text: __('Charge deleted.'));
     }
 
-    public function rendering($view)
+    /**
+     * Months to choose from (Y-m => label), newest first: every month with a charge, plus the current and selected month.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function months(): array
     {
-        $query = CarCharge::orderBy('date', 'desc');
+        return CarCharge::pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->format('Y-m'))
+            ->push(today()->format('Y-m'), $this->month)
+            ->unique()
+            ->sortDesc()
+            ->mapWithKeys(fn (string $ym) => [$ym => Carbon::createFromFormat('!Y-m', $ym)->format('F Y')])
+            ->all();
+    }
 
-        if ($this->car !== '') {
-            $query->where('car_id', $this->car);
-        }
+    /** Average price of the selected month (PLN/kWh, from the dashboard summary); null without data or prices. */
+    #[Computed]
+    public function pricePerUnit(): ?float
+    {
+        return app(EnergyUsage::class)->month(Carbon::createFromFormat('!Y-m', $this->month))?->pricePerUnit;
+    }
 
-        $view->with('charges', $query->paginate(15));
-        $view->with('cars', CarCharge::distinct()->pluck('car_id'));
+    /**
+     * Charges of the selected month per car (car id => charges), newest first.
+     *
+     * @return array<string, \Illuminate\Support\Collection<int, CarCharge>>
+     */
+    #[Computed]
+    public function charges(): array
+    {
+        $start = Carbon::createFromFormat('!Y-m', $this->month);
 
-        $mergeableIds = collect();
+        $charges = CarCharge::whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<=', $start->copy()->endOfMonth()->toDateString())
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('car_id');
 
-        if ($this->car !== '') {
-            $allForCar = CarCharge::where('car_id', $this->car)
-                ->orderBy('date', 'asc')
-                ->get(['id', 'date']);
-
-            foreach ($allForCar as $index => $c) {
-                $next = $allForCar->get($index + 1);
-                if ($next && $next->date->isSameMonth($c->date)) {
-                    $mergeableIds->push($c->id);
-                }
-            }
-        }
-
-        $view->with('mergeableIds', $mergeableIds);
+        return collect(CarCharge::CARS)
+            ->mapWithKeys(fn (string $car) => [$car => $charges->get($car, collect())])
+            ->all();
     }
 
 }; ?>
 
 <div class="mx-auto max-w-2xl w-full space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-4">
         <flux:heading size="xl">{{ __('Car Charges') }}</flux:heading>
-        <flux:button href="{{ route('car-charges.create') }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
+
+        <flux:select wire:model.live="month" class="max-w-48" :aria-label="__('Month')">
+            @foreach ($this->months as $value => $label)
+                <flux:select.option :value="$value">{{ $label }}</flux:select.option>
+            @endforeach
+        </flux:select>
     </div>
 
-    <flux:button.group>
-        @foreach ($cars as $carId)
-            <flux:button
-                wire:click="selectCar('{{ $carId }}')"
-                :variant="$car === $carId ? 'primary' : 'filled'"
-            >{{ ucfirst($carId) }}</flux:button>
-        @endforeach
-    </flux:button.group>
+    @foreach ($this->charges as $carId => $charges)
+        <flux:card wire:key="car-{{ $carId }}" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <flux:heading size="lg" class="flex items-center gap-2">
+                    <flux:icon name="bolt" :class="(\App\Models\CarCharge::COLORS[$carId] ?? 'text-zinc-400').' shrink-0'" />
+                    {{ ucfirst($carId) }}
+                </flux:heading>
+                <flux:button size="sm" href="{{ route('car-charges.create', ['car' => $carId, 'month' => $month]) }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
+            </div>
 
-    <flux:card>
-        <flux:table>
-            <flux:table.columns>
-                <flux:table.column>{{ __('Date') }}</flux:table.column>
-                <flux:table.column>{{ __('Car') }}</flux:table.column>
-                <flux:table.column>{{ __('Charged (kWh)') }}</flux:table.column>
-                <flux:table.column class="w-0" />
-            </flux:table.columns>
-            <flux:table.rows>
-                @foreach ($charges as $charge)
-                    <flux:table.row :key="$charge->id">
-                        <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
-                        <flux:table.cell>{{ ucfirst($charge->car_id) }}</flux:table.cell>
-                        <flux:table.cell>{{ number_format($charge->charged) }}</flux:table.cell>
-                        <flux:table.cell>
-                            <div class="flex items-center justify-end gap-1">
-                                @if ($mergeableIds->contains($charge->id))
-                                    <flux:button size="xs" icon="arrow-up" wire:click="merge({{ $charge->id }})" wire:confirm="{{ __('Merge this charge into the next one?') }}" />
+            @if ($charges->isEmpty())
+                <flux:text>{{ __('No charges in this month.') }}</flux:text>
+            @else
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Date') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Charged') }}</flux:table.column>
+                        <flux:table.column class="w-0" />
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($charges as $charge)
+                            <flux:table.row :key="$charge->id">
+                                <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ number_format($charge->charged) }} kWh</flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <flux:button size="xs" icon="pencil" href="{{ route('car-charges.edit', $charge) }}" wire:navigate :aria-label="__('Edit')" />
+                                        <flux:button size="xs" variant="danger" icon="trash" wire:click="delete({{ $charge->id }})" wire:confirm="{{ __('Delete this charge?') }}" :aria-label="__('Delete')" />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                    <flux:table.rows>
+                        <flux:table.row>
+                            <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
+                            <flux:table.cell align="end" class="font-semibold">{{ number_format($charges->sum('charged')) }} kWh</flux:table.cell>
+                            <flux:table.cell align="end" class="font-semibold whitespace-nowrap">
+                                @if ($this->pricePerUnit !== null)
+                                    {{ number_format($charges->sum('charged') * $this->pricePerUnit, 2) }} PLN
                                 @endif
-                                <flux:button size="xs" variant="danger" icon="trash" wire:click="delete({{ $charge->id }})" wire:confirm="{{ __('Delete this charge?') }}" />
-                            </div>
-                        </flux:table.cell>
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
-    </flux:card>
-
-    {{ $charges->links() }}
+                            </flux:table.cell>
+                        </flux:table.row>
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
+    @endforeach
 </div>

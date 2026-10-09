@@ -1,34 +1,44 @@
 <?php
 
-use App\Models\Season;
-use App\Services\ReadingDiff;
+use App\Services\EnergyUsage;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component {
 
-    public int $season = 0;
+    /** Any date within the last month shown (Y-m-d). */
+    public string $month = '';
 
-    private function resolveSeason(): ?Season
+    /**
+     * Up to 12 months ending at $month; leading months without data are dropped.
+     *
+     * @return array<string, \App\Data\EnergySummary|null> keyed by the first day of the month (Y-m-d)
+     */
+    #[Computed]
+    public function summaries(): array
     {
-        return $this->season !== 0
-            ? Season::findOrFail($this->season)
-            : Season::orderByDesc('starting_date')->first();
+        $usage = app(EnergyUsage::class);
+        $last = Carbon::parse($this->month)->startOfMonth();
+        $summaries = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $month = $last->copy()->subMonthsNoOverflow($i);
+            $summary = $usage->month($month);
+
+            if ($summary === null && $summaries === []) {
+                continue;
+            }
+
+            $summaries[$month->toDateString()] = $summary;
+        }
+
+        return $summaries;
     }
 
     #[Computed]
     public function chartData(): array
     {
-        $diff = app(ReadingDiff::class);
-        $season = $this->resolveSeason();
-        $lastReading = Carbon::parse(\App\Models\Reading::latest('date')->value('date'));
-        $start = $season
-            ? Carbon::parse($season->starting_date)->startOfMonth()
-            : Carbon::parse(\App\Models\Reading::oldest('date')->value('date'))->startOfMonth();
-        $last = $season ? $season->endDate()->min($lastReading) : $lastReading;
-        $months = max(0, (int) $start->diffInMonths($last->copy()->startOfMonth()));
-
         $categories = [];
         $consumed = [];
         $autoConsumed = [];
@@ -36,25 +46,31 @@ new class extends Component {
         $pvGenerated = [];
         $price = [];
 
-        for ($i = 0; $i <= $months; $i++) {
-            $month = $start->copy()->addMonthsNoOverflow($i);
-            $usage = $diff->month($month);
-
-            $categories[]   = $month->format('M');
-            $consumed[]     = $usage?->consumed ?? 0;
-            $autoConsumed[] = $usage?->autoConsumed ?? 0;
-            $fedIn[]        = $usage?->fedIn ?? 0;
-            $pvGenerated[]  = $usage?->pvGenerated ?? 0;
-            $price[]        = $usage ? round($usage->amount, 2) : 0;
+        foreach ($this->summaries as $month => $usage) {
+            $categories[] = Carbon::parse($month)->format('M');
+            $consumed[] = round($usage?->consumed ?? 0, 1);
+            $autoConsumed[] = round($usage?->autoConsumed ?? 0, 1);
+            $fedIn[] = round($usage?->fedIn ?? 0, 1);
+            $pvGenerated[] = round($usage?->pvGenerated ?? 0, 1);
+            $price[] = round($usage?->amount ?? 0, 2);
         }
 
         return compact('categories', 'consumed', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
     }
 
     #[Computed]
-    public function seasonName(): string
+    public function label(): string
     {
-        return $this->resolveSeason()?->name ?? __('Overview');
+        $months = array_keys($this->summaries);
+
+        if ($months === []) {
+            return '';
+        }
+
+        $first = Carbon::parse($months[0])->format('M Y');
+        $last = Carbon::parse(end($months))->format('M Y');
+
+        return $first === $last ? $first : $first.' – '.$last;
     }
 
 }; ?>
@@ -91,7 +107,7 @@ new class extends Component {
                     fontFamily: 'inherit',
                 },
                 series: [
-                    { name: 'Consumed',      data: data.consumed,    group: 'usage' },
+                    { name: 'Consumed',      data: data.consumed,     group: 'usage' },
                     { name: 'Auto-consumed', data: data.autoConsumed, group: 'usage' },
                     { name: 'Fed In',        data: data.fedIn,        group: 'fedIn' },
                     { name: 'Generated',     data: data.pvGenerated,  group: 'solar' },
@@ -151,6 +167,6 @@ new class extends Component {
     }"
     data-chart-data="{{ json_encode($this->chartData) }}"
 >
-    <flux:heading size="lg" class="mb-4">{{ $this->seasonName }}</flux:heading>
+    <flux:heading size="lg" class="mb-4">{{ $this->label }}</flux:heading>
     <div x-ref="chart"></div>
 </flux:card>

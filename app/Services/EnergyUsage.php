@@ -70,7 +70,9 @@ class EnergyUsage
         return new EnergySummary(
             from: $from->toDateString(),
             to: $to->toDateString(),
-            pvGenerated: $this->interpolator->forDate($to) - $this->interpolator->forDate($from->copy()->subDay()),
+            // The last day may be only partly covered by meter data, so PV is counted up to that point.
+            pvGenerated: $this->interpolator->forDate($to, $meter[$to->toDateString()]->dayFraction())
+                - $this->interpolator->forDate($from->copy()->subDay()),
             peakConsumed: $days->sum('t1_consumed'),
             offPeakConsumed: $days->sum('t2_consumed'),
             fedIn: $days->sum(fn (MeterDailyReading $r) => $r->t1_fed_in + $r->t2_fed_in),
