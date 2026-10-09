@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Data\EnergySummary;
 use App\Models\CarCharge;
 use App\Models\MeterDailyReading;
 use App\Models\Price;
@@ -48,10 +49,41 @@ class EnergyUsageTest extends TestCase
 
         $this->assertSame('2026-10-05', $d->to);
         // 20/day: 4 full days (80) and Oct 5 until noon on the daylight curve.
-        $fraction = MeterDailyReading::whereDate('date', '2026-10-05')->first()->dayFraction();
+        $fraction = MeterDailyReading::whereDate('date', '2026-10-05')->first()->pvFraction();
         $this->assertGreaterThan(0.3, $fraction);
         $this->assertLessThan(0.5, $fraction);
         $this->assertEqualsWithDelta(80 + 20 * $fraction, $d->pvGenerated, 0.0001);
+    }
+
+    public function test_partial_last_day_counts_as_part_of_a_day_in_averages(): void
+    {
+        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-10-10', 'value' => 1200]);
+        $this->meterDays('2026-10-01', '2026-10-04');
+        $this->meterDays('2026-10-05', '2026-10-05', ['hours' => 12]);
+        $pvFraction = MeterDailyReading::whereDate('date', '2026-10-05')->first()->pvFraction();
+
+        $d = $this->month('2026-10-15');
+
+        $this->assertSame(5, $d->days);
+        $this->assertSame(4.5, $d->coveredDays);
+        $this->assertEqualsWithDelta(4 + $pvFraction, $d->pvDays, 0.0001);
+        $this->assertEqualsWithDelta($d->consumed / 4.5, $d->perDay($d->consumed), 0.0001);
+        // PV per full day of sun stays at the 20/day rate.
+        $this->assertEqualsWithDelta(20.0, $d->perPvDay($d->pvGenerated), 0.0001);
+        $this->assertEqualsWithDelta($d->amount / 4.5 * 31, $d->estimatedAmount, 0.0001);
+
+        Livewire::test('month-card', ['month' => '2026-10-01'])
+            ->assertSee('20.0 <span', false);   // PV daily average
+    }
+
+    public function test_averages_are_zero_when_nothing_is_counted(): void
+    {
+        $d = new EnergySummary('2026-10-01', '2026-10-01', 0, 0, 0, 0, lastDayHoursFraction: 0, lastDayPvFraction: 0);
+
+        $this->assertSame(0.0, $d->perDay(5));
+        $this->assertSame(0.0, $d->perPvDay(5));
     }
 
     public function test_payable_is_balanced_consumed_minus_80_percent_of_balanced_fed_in(): void

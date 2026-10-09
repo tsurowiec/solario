@@ -63,12 +63,20 @@ class MeterDailyReading extends Model
     }
 
     /**
+     * Part of the day's time the meter data covers, from 0 to 1.
+     */
+    public function hoursFraction(): float
+    {
+        return min(1, $this->hours / static::dayLength($this->date));
+    }
+
+    /**
      * Estimated share of the day's PV production made within the hours the meter data covers, from 0 to 1.
      *
      * Production is modelled as a sine curve between sunrise and sunset at the PV location,
      * so its share up to a moment is (1 − cos(π·x)) / 2, x being the part of the daylight passed.
      */
-    public function dayFraction(): float
+    public function pvFraction(): float
     {
         $start = Carbon::parse($this->date->toDateString(), self::TIMEZONE)->startOfDay();
         // Hourly rows are real hours since midnight, also across a DST change.
@@ -79,7 +87,7 @@ class MeterDailyReading extends Model
 
         // Polar day or night: fall back to the covered part of the day.
         if (! is_int($sun['sunrise']) || ! is_int($sun['sunset'])) {
-            return min(1, $this->hours / static::dayLength($this->date));
+            return $this->hoursFraction();
         }
 
         $x = max(0, min(1, ($end - $sun['sunrise']) / ($sun['sunset'] - $sun['sunrise'])));

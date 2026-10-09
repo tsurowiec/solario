@@ -81,7 +81,7 @@ class extends Component {
             ->get()
             ->keyBy(fn (PvInverterReading $r) => $r->date->toDateString());
 
-        $pv = app(PvInverterInterpolator::class)->between($from, $to, $meter->map->dayFraction()->all());
+        $pv = app(PvInverterInterpolator::class)->between($from, $to, $meter->map->pvFraction()->all());
 
         $rows = [];
 
@@ -134,7 +134,7 @@ class extends Component {
         $before = $days[count($days) - 1]['date']->copy()->subDay();
 
         // The last day may be only partly covered by meter data, so PV is counted up to that point.
-        $fraction = $days[0]['meter']?->dayFraction() ?? 1.0;
+        $fraction = $days[0]['meter']?->pvFraction() ?? 1.0;
         $pv = app(PvInverterInterpolator::class)->between($before, $to, [$to->toDateString() => $fraction]);
 
         if (! isset($pv[$before->toDateString()], $pv[$to->toDateString()])) {

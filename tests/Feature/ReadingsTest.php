@@ -134,7 +134,7 @@ class ReadingsTest extends TestCase
         MeterDailyReading::create(['date' => '2026-10-05', 'hours' => 12, ...array_fill_keys(MeterDailyReading::VALUE_FIELDS, 1)]);
 
         $component = Livewire::test('pages::readings.index');
-        $fraction = MeterDailyReading::first()->dayFraction();
+        $fraction = MeterDailyReading::first()->pvFraction();
 
         // Oct 1–5 at 10/day, Oct 5 until noon: an estimate even though both counters are readings.
         $this->assertEqualsWithDelta(40 + 10 * $fraction, $component->instance()->pvProduction['value'], 0.0001);

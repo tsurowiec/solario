@@ -89,23 +89,23 @@ new class extends Component {
 
     <div x-show="daily" x-cloak>
         <div class="grid grid-cols-2 gap-2 mb-4">
-            <x-stat icon="sun" color="text-yellow-400" :value="number_format($d->pvGenerated / $d->days, 1)" unit="kWh/d" />
-            <x-stat icon="light-bulb" color="text-blue-400" :value="number_format($d->totalUsage / $d->days, 1)" unit="kWh/d" />
+            <x-stat icon="sun" color="text-yellow-400" :value="number_format($d->perPvDay($d->pvGenerated), 1)" unit="kWh/d" />
+            <x-stat icon="light-bulb" color="text-blue-400" :value="number_format($d->perDay($d->totalUsage), 1)" unit="kWh/d" />
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
-            <x-stat icon="light-bulb" color="text-yellow-400" :value="number_format($d->autoConsumed / $d->days, 1)" unit="kWh/d" />
+            <x-stat icon="light-bulb" color="text-yellow-400" :value="number_format($d->perPvDay($d->autoConsumed), 1)" unit="kWh/d" />
             <x-stat icon="chart-pie" color="text-yellow-400" :value="number_format($d->autoConsumedRatio)" unit="%" />
         </div>
         <div class="grid grid-cols-2 gap-2">
-            <x-stat icon="arrow-down-circle" color="text-red-400" :value="number_format($d->consumed / $d->days, 1)" unit="kWh/d" />
-            <x-stat icon="arrow-up-circle" color="text-green-400" :value="number_format($d->fedIn / $d->days, 1)" unit="kWh/d" />
+            <x-stat icon="arrow-down-circle" color="text-red-400" :value="number_format($d->perDay($d->consumed), 1)" unit="kWh/d" />
+            <x-stat icon="arrow-up-circle" color="text-green-400" :value="number_format($d->perDay($d->fedIn), 1)" unit="kWh/d" />
         </div>
 
         <flux:separator class="my-6" />
 
         @if ($d->amount !== null)
             <div class="grid grid-cols-2 gap-2 mb-4">
-                <x-stat icon="banknotes" color="text-blue-400" :value="number_format($d->amount / $d->days, 2)" unit="PLN/d" />
+                <x-stat icon="banknotes" color="text-blue-400" :value="number_format($d->perDay($d->amount), 2)" unit="PLN/d" />
                 <x-stat icon="tag" color="text-blue-400" :value="number_format($d->pricePerUnit, 2)" unit="PLN/kWh" />
             </div>
         @endif
@@ -116,16 +116,16 @@ new class extends Component {
 
         @foreach ($d->carUsage as $car => $kWh)
             <div class="grid grid-cols-2 gap-2 mt-4">
-                <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($kWh / $d->days, 1)" unit="kWh/d" />
+                <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->perDay($kWh), 1)" unit="kWh/d" />
                 @if ($d->amount !== null)
-                    <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carAmounts[$car] / $d->days, 2)" unit="PLN/d" />
+                    <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->perDay($d->carAmounts[$car]), 2)" unit="PLN/d" />
                 @endif
             </div>
         @endforeach
         <div class="grid grid-cols-2 gap-2 mt-4">
-            <x-stat icon="home" color="text-zinc-400" :value="number_format($d->householdUsage / $d->days, 1)" unit="kWh/d" />
+            <x-stat icon="home" color="text-zinc-400" :value="number_format($d->perDay($d->householdUsage), 1)" unit="kWh/d" />
             @if ($d->amount !== null)
-                <x-stat icon="home" color="text-zinc-400" :value="number_format($d->householdAmount / $d->days, 2)" unit="PLN/d" />
+                <x-stat icon="home" color="text-zinc-400" :value="number_format($d->perDay($d->householdAmount), 2)" unit="PLN/d" />
             @endif
         </div>
     </div>

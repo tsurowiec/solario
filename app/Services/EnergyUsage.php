@@ -65,13 +65,14 @@ class EnergyUsage
             return null;
         }
 
+        $last = $meter[$to->toDateString()];
         $days = $meter->filter(fn (MeterDailyReading $r) => $r->date->betweenIncluded($from, $to));
 
         return new EnergySummary(
             from: $from->toDateString(),
             to: $to->toDateString(),
             // The last day may be only partly covered by meter data, so PV is counted up to that point.
-            pvGenerated: $this->interpolator->forDate($to, $meter[$to->toDateString()]->dayFraction())
+            pvGenerated: $this->interpolator->forDate($to, $last->pvFraction())
                 - $this->interpolator->forDate($from->copy()->subDay()),
             peakConsumed: $days->sum('t1_consumed'),
             offPeakConsumed: $days->sum('t2_consumed'),
@@ -82,6 +83,8 @@ class EnergyUsage
             offPeakBalancedFedIn: $days->sum('t2_balanced_fed_in'),
             price: Price::activeOn($from),
             carUsage: $this->carUsage($from, $to),
+            lastDayHoursFraction: $last->hoursFraction(),
+            lastDayPvFraction: $last->pvFraction(),
         );
     }
 
