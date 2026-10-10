@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\FetchMeterReadings;
 use App\Models\MeterDailyReading;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -104,6 +106,51 @@ class MeterFetchTest extends TestCase
         $this->artisan('meter:fetch')
             ->expectsOutput('Tauron has temporarily blocked the account (too many requests).')
             ->assertFailed();
+    }
+
+    public function test_fails_when_the_login_page_reports_too_many_logins(): void
+    {
+        $this->fakeTauron(authResponse: '<html><div class="alert">Przekroczono maksymalną liczbę logowań. Prosimy o zalogowanie się za 8 godzin.</div></html>');
+
+        $this->artisan('meter:fetch')
+            ->expectsOutput('Tauron has temporarily blocked the account (too many logins).')
+            ->assertFailed();
+    }
+
+    public function test_refused_login_pauses_further_runs_for_9_hours(): void
+    {
+        Carbon::setTestNow('2026-10-10 08:30:00');
+        $this->fakeTauron(authResponse: $this->loginPage());
+
+        $this->artisan('meter:fetch')->assertFailed();
+        Http::assertSentCount(2);   // login page + credentials
+
+        $this->artisan('meter:fetch')
+            ->expectsOutputToContain('Skipped: Tauron refused the last login, paused until 2026-10-10 19:30')
+            ->assertSuccessful();
+        Http::assertSentCount(2);   // no new login
+
+        Carbon::setTestNow('2026-10-10 17:31:00');
+        $this->assertNull(Cache::get(FetchMeterReadings::PAUSE_KEY));
+    }
+
+    public function test_force_logs_in_while_paused(): void
+    {
+        Cache::put(FetchMeterReadings::PAUSE_KEY, '2026-10-10 19:30 CEST', now()->addHours(9));
+        $this->fakeTauron(csv: $this->csv(['2026-10-01']));
+
+        $this->artisan('meter:fetch', ['--force' => true])->assertSuccessful();
+
+        $this->assertSame(1, MeterDailyReading::count());
+    }
+
+    public function test_other_failures_do_not_pause(): void
+    {
+        $this->fakeTauron(csv: '<html>Zaloguj się</html>');
+
+        $this->artisan('meter:fetch')->assertFailed();
+
+        $this->assertNull(Cache::get(FetchMeterReadings::PAUSE_KEY));
     }
 
     public function test_fails_without_importing_when_the_response_is_not_the_csv(): void

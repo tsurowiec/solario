@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\TauronLoginException;
 use Carbon\CarbonInterface;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Http\Client\PendingRequest;
@@ -16,7 +17,8 @@ use RuntimeException;
  * Ported from https://github.com/mlesniew/elicznik (MIT):
  * log in via Keycloak (GET the login page, POST the credentials to the form's action),
  * optionally select the metering point, then GET /energia/do/dane with the CSV export form.
- * Tauron redirects to /blokada when an account makes too many requests.
+ * Tauron redirects to /blokada when an account makes too many requests, and shows a message on the
+ * login page after too many logins; both block the account for 8 hours.
  */
 class TauronMeterClient
 {
@@ -27,6 +29,9 @@ class TauronMeterClient
     private const SITE_URL = self::SERVICE_URL.'/ustaw_punkt';
 
     private const DATA_URL = self::SERVICE_URL.'/energia/do/dane';
+
+    /** Shown on the login page when the account is blocked after too many logins. */
+    private const LOGIN_LIMIT_MESSAGE = 'Przekroczono maksymalną liczbę logowań';
 
     private CookieJar $cookies;
 
@@ -81,7 +86,7 @@ class TauronMeterClient
 
         // A successful login redirects away; the form is shown again when the credentials are wrong.
         if (str_contains($result->body(), 'id="kc-form-login"')) {
-            throw new RuntimeException('Tauron login failed: invalid username or password.');
+            throw new TauronLoginException('Tauron login failed: invalid username or password.');
         }
 
         if ($this->site) {
@@ -101,7 +106,11 @@ class TauronMeterClient
     private function check(Response $response): Response
     {
         if (str_ends_with((string) $response->effectiveUri()?->getPath(), '/blokada')) {
-            throw new RuntimeException('Tauron has temporarily blocked the account (too many requests).');
+            throw new TauronLoginException('Tauron has temporarily blocked the account (too many requests).');
+        }
+
+        if (str_contains($response->body(), self::LOGIN_LIMIT_MESSAGE)) {
+            throw new TauronLoginException('Tauron has temporarily blocked the account (too many logins).');
         }
 
         return $response->throw();
