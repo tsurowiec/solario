@@ -125,13 +125,13 @@ class MeterFetchTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_fetch_is_scheduled_every_two_hours(): void
+    public function test_fetch_is_scheduled_twice_daily(): void
     {
         $event = collect(app(Schedule::class)->events())
             ->first(fn ($event) => str_contains($event->command, 'meter:fetch'));
 
         $this->assertNotNull($event);
-        $this->assertSame('0 */2 * * *', $event->expression);
+        $this->assertSame('30 8,20 * * *', $event->expression);
         $this->assertSame('Europe/Warsaw', $event->timezone);
     }
 
