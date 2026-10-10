@@ -8,4 +8,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('meter:fetch')->twiceDailyAt(8, 20, 30)->timezone('Europe/Warsaw')->withoutOverlapping();
+Schedule::command('meter:fetch --jitter=600')->twiceDailyAt(8, 20, 30)->timezone('Europe/Warsaw')->withoutOverlapping();

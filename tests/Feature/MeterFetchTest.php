@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Console\Commands\FetchMeterReadings;
 use App\Models\MeterDailyReading;
+use Carbon\CarbonInterval;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class MeterFetchTest extends TestCase
@@ -144,6 +146,31 @@ class MeterFetchTest extends TestCase
         $this->assertSame(1, MeterDailyReading::count());
     }
 
+    public function test_jitter_waits_up_to_the_given_seconds_before_logging_in(): void
+    {
+        Sleep::fake();
+        $this->fakeTauron(csv: $this->csv([]));
+
+        $this->artisan('meter:fetch', ['--jitter' => 600])->assertSuccessful();
+
+        Sleep::assertSleptTimes(1);
+        Sleep::assertSlept(fn (CarbonInterval $wait) => $wait->totalSeconds >= 0 && $wait->totalSeconds <= 600);
+        Http::assertSentCount(3);   // login page, credentials, CSV — after the wait
+    }
+
+    public function test_no_wait_without_jitter_or_while_paused(): void
+    {
+        Sleep::fake();
+        $this->fakeTauron(csv: $this->csv([]));
+
+        $this->artisan('meter:fetch')->assertSuccessful();
+
+        Cache::put(FetchMeterReadings::PAUSE_KEY, 'manual', now()->addHours(9));
+        $this->artisan('meter:fetch', ['--jitter' => 600])->assertSuccessful();
+
+        Sleep::assertNeverSlept();
+    }
+
     public function test_other_failures_do_not_pause(): void
     {
         $this->fakeTauron(csv: '<html>Zaloguj się</html>');
@@ -179,6 +206,7 @@ class MeterFetchTest extends TestCase
 
         $this->assertNotNull($event);
         $this->assertSame('30 8,20 * * *', $event->expression);
+        $this->assertStringContainsString('--jitter=600', $event->command);
         $this->assertSame('Europe/Warsaw', $event->timezone);
     }
 
