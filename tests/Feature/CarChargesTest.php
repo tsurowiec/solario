@@ -106,6 +106,19 @@ class CarChargesTest extends TestCase
             ->assertDontSee('PLN');  // no energy data / prices
     }
 
+    public function test_shows_range_added_at_each_cars_consumption(): void
+    {
+        CarCharge::create(['date' => '2026-10-01', 'car_id' => 'tesia', 'charged' => 30]);
+        CarCharge::create(['date' => '2026-10-02', 'car_id' => 'tesia', 'charged' => 10]);
+        CarCharge::create(['date' => '2026-10-03', 'car_id' => 'tessy', 'charged' => 30]);
+
+        Livewire::test('pages::car-charges.index')
+            ->assertSeeInOrder([
+                'Tesia', '50 km', '150 km', 'Total', '200 km',  // 20 kWh / 100 km
+                'Tessy', '200 km', 'Total', '200 km',  // 15 kWh / 100 km
+            ]);
+    }
+
     public function test_total_row_shows_the_amount_at_the_average_price_of_the_month(): void
     {
         Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);

@@ -187,11 +187,16 @@ class EnergyUsageTest extends TestCase
         $this->assertEqualsWithDelta(['tesia' => 15 * CarCharge::GRID_RATIO, 'tessy' => 0.0], $d->carUsage, 0.000001);  // taken from the grid
         $this->assertEqualsWithDelta(15 * CarCharge::GRID_RATIO * $d->pricePerUnit, $d->carAmounts['tesia'], 0.000001);
         $this->assertSame(0.0, $d->carAmounts['tessy']);
+        $this->assertEqualsWithDelta(['tesia' => 75.0, 'tessy' => 0.0], $d->carRange, 0.000001);  // 15 kWh charged at 20 kWh / 100 km
+        $this->assertEqualsWithDelta($d->carAmounts['tesia'] / 75 * 100, $d->carCostPer100Km['tesia'], 0.000001);
+        $this->assertNull($d->carCostPer100Km['tessy']);  // no range
         $this->assertEqualsWithDelta($d->totalUsage - 15 * CarCharge::GRID_RATIO, $d->householdUsage, 0.000001);
         $this->assertEqualsWithDelta($d->amount - $d->carAmounts['tesia'], $d->householdAmount, 0.000001);
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
             ->assertSee(number_format($d->carAmounts['tesia'], 2))
+            ->assertSeeInOrder(['kWh', '(75 km)', 'PLN', '('.number_format($d->carCostPer100Km['tesia'], 2).' /100km)'])
+            ->assertSeeInOrder(['kWh/d', '(38 km/d)', 'PLN/d', '('.number_format($d->carCostPer100Km['tesia'], 2).' /100km)'])
             ->assertSee(number_format($d->householdAmount, 2));
     }
 
@@ -203,6 +208,11 @@ class EnergyUsageTest extends TestCase
 
         $this->assertEqualsWithDelta(['tesia' => 0.0, 'tessy' => 7 * CarCharge::GRID_RATIO], $d->carUsage, 0.000001);
         $this->assertSame(['tesia' => null, 'tessy' => null], $d->carAmounts);
+        $this->assertEqualsWithDelta(['tesia' => 0.0, 'tessy' => 7 / 15 * 100], $d->carRange, 0.000001);  // range doesn't need prices
+
+        Livewire::test('month-card', ['month' => '2026-10-01'])
+            ->assertSeeInOrder(['(47 km)', '(23 km/d)'])  // total, then per day over 2 days
+            ->assertDontSee('/100km');
         $this->assertNull($d->householdAmount);
         $this->assertEqualsWithDelta($d->totalUsage - 7 * CarCharge::GRID_RATIO, $d->householdUsage, 0.000001);
     }

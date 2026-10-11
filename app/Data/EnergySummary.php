@@ -2,6 +2,7 @@
 
 namespace App\Data;
 
+use App\Models\CarCharge;
 use App\Models\Price;
 use Carbon\Carbon;
 
@@ -58,6 +59,12 @@ readonly class EnergySummary
 
     /** @var array<string, float|null> PLN per car (kWh taken from the grid × price per kWh); null without prices. */
     public array $carAmounts;
+
+    /** @var array<string, float> km of range added per car (kWh charged at the car's consumption). */
+    public array $carRange;
+
+    /** @var array<string, float|null> PLN per 100 km of range per car; null without prices or range. */
+    public array $carCostPer100Km;
 
     /** kWh used by the household: total usage − all car usage. */
     public float $householdUsage;
@@ -124,6 +131,16 @@ readonly class EnergySummary
         $this->pricePerUnit = $price ? ($this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0) : null;
 
         $this->carAmounts = array_map(fn (float $kWh) => $price ? $kWh * $this->pricePerUnit : null, $carUsage);
+        $this->carRange = array_combine(array_keys($carUsage), array_map(
+            fn (float $kWh, string $car) => $kWh / CarCharge::GRID_RATIO / CarCharge::CONSUMPTION[$car] * 100,
+            $carUsage,
+            array_keys($carUsage),
+        ));
+        $this->carCostPer100Km = array_combine(array_keys($carUsage), array_map(
+            fn (?float $amount, float $km) => $amount !== null && $km > 0 ? $amount / $km * 100 : null,
+            $this->carAmounts,
+            $this->carRange,
+        ));
         $this->householdUsage = $this->totalUsage - array_sum($carUsage);
         $this->householdAmount = $price ? $this->amount - array_sum($this->carAmounts) : null;
     }

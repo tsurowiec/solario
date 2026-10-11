@@ -14,6 +14,9 @@ class CarCharge extends Model
     /** kWh taken from the grid per kWh charged as reported by the car (charging losses). */
     public const GRID_RATIO = 1.15;
 
+    /** Consumption per car (kWh per 100 km). */
+    public const CONSUMPTION = ['tesia' => 20, 'tessy' => 15];
+
     protected $fillable = [
         'date',
         'car_id',
@@ -28,5 +31,11 @@ class CarCharge extends Model
     public function getTakenAttribute(): float
     {
         return $this->charged * self::GRID_RATIO;
+    }
+
+    /** km of range added by this charge (charged kWh at the car's consumption). */
+    public function getRangeAttribute(): float
+    {
+        return $this->charged / self::CONSUMPTION[$this->car_id] * 100;
     }
 }
