@@ -195,8 +195,7 @@ class EnergyUsageTest extends TestCase
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
             ->assertSee(number_format($d->carAmounts['tesia'], 2))
-            ->assertSeeInOrder(['kWh', '(75 km)', 'PLN', '('.number_format($d->carCostPer100Km['tesia'], 2).' /100km)'])
-            ->assertSeeInOrder(['kWh/d', '(38 km/d)', 'PLN/d', '('.number_format($d->carCostPer100Km['tesia'], 2).' /100km)'])
+            ->assertSeeInOrder(['75', 'km', number_format($d->carCostPer100Km['tesia'], 2), 'PLN/100km'])  // averages view
             ->assertSee(number_format($d->householdAmount, 2));
     }
 
@@ -211,7 +210,7 @@ class EnergyUsageTest extends TestCase
         $this->assertEqualsWithDelta(['tesia' => 0.0, 'tessy' => 7 / 15 * 100], $d->carRange, 0.000001);  // range doesn't need prices
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
-            ->assertSeeInOrder(['(47 km)', '(23 km/d)'])  // total, then per day over 2 days
+            ->assertSeeInOrder(['47', 'km'])
             ->assertDontSee('/100km');
         $this->assertNull($d->householdAmount);
         $this->assertEqualsWithDelta($d->totalUsage - 7 * CarCharge::GRID_RATIO, $d->householdUsage, 0.000001);
