@@ -184,10 +184,10 @@ class EnergyUsageTest extends TestCase
 
         $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
 
-        $this->assertSame(['tesia' => 15.0, 'tessy' => 0.0], $d->carUsage);
-        $this->assertEqualsWithDelta(15 * $d->pricePerUnit, $d->carAmounts['tesia'], 0.000001);
+        $this->assertEqualsWithDelta(['tesia' => 15 * CarCharge::GRID_RATIO, 'tessy' => 0.0], $d->carUsage, 0.000001);  // taken from the grid
+        $this->assertEqualsWithDelta(15 * CarCharge::GRID_RATIO * $d->pricePerUnit, $d->carAmounts['tesia'], 0.000001);
         $this->assertSame(0.0, $d->carAmounts['tessy']);
-        $this->assertEqualsWithDelta($d->totalUsage - 15, $d->householdUsage, 0.000001);
+        $this->assertEqualsWithDelta($d->totalUsage - 15 * CarCharge::GRID_RATIO, $d->householdUsage, 0.000001);
         $this->assertEqualsWithDelta($d->amount - $d->carAmounts['tesia'], $d->householdAmount, 0.000001);
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
@@ -201,10 +201,10 @@ class EnergyUsageTest extends TestCase
 
         $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
 
-        $this->assertSame(['tesia' => 0.0, 'tessy' => 7.0], $d->carUsage);
+        $this->assertEqualsWithDelta(['tesia' => 0.0, 'tessy' => 7 * CarCharge::GRID_RATIO], $d->carUsage, 0.000001);
         $this->assertSame(['tesia' => null, 'tessy' => null], $d->carAmounts);
         $this->assertNull($d->householdAmount);
-        $this->assertEqualsWithDelta($d->totalUsage - 7, $d->householdUsage, 0.000001);
+        $this->assertEqualsWithDelta($d->totalUsage - 7 * CarCharge::GRID_RATIO, $d->householdUsage, 0.000001);
     }
 
     public function test_partial_month_shows_an_estimate_for_the_whole_month(): void

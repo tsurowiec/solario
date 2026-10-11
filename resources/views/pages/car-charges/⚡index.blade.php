@@ -110,6 +110,7 @@ class extends Component {
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
                         <flux:table.column align="end">{{ __('Charged') }}</flux:table.column>
+                        <flux:table.column align="end">{{ __('Taken') }}</flux:table.column>
                         <flux:table.column class="w-0" />
                     </flux:table.columns>
                     <flux:table.rows>
@@ -117,6 +118,7 @@ class extends Component {
                             <flux:table.row :key="$charge->id">
                                 <flux:table.cell>{{ $charge->date->format('d M Y') }}</flux:table.cell>
                                 <flux:table.cell align="end">{{ number_format($charge->charged) }} kWh</flux:table.cell>
+                                <flux:table.cell align="end">{{ number_format($charge->taken, 1) }} kWh</flux:table.cell>
                                 <flux:table.cell>
                                     <div class="flex items-center justify-end gap-1">
                                         <flux:button size="xs" icon="pencil" href="{{ route('car-charges.edit', $charge) }}" wire:navigate :aria-label="__('Edit')" />
@@ -130,9 +132,10 @@ class extends Component {
                         <flux:table.row>
                             <flux:table.cell class="font-semibold">{{ __('Total') }}</flux:table.cell>
                             <flux:table.cell align="end" class="font-semibold">{{ number_format($charges->sum('charged')) }} kWh</flux:table.cell>
+                            <flux:table.cell align="end" class="font-semibold">{{ number_format($charges->sum('taken'), 1) }} kWh</flux:table.cell>
                             <flux:table.cell align="end" class="font-semibold whitespace-nowrap">
                                 @if ($this->pricePerUnit !== null)
-                                    {{ number_format($charges->sum('charged') * $this->pricePerUnit, 2) }} PLN
+                                    {{ number_format($charges->sum('taken') * $this->pricePerUnit, 2) }} PLN
                                 @endif
                             </flux:table.cell>
                         </flux:table.row>

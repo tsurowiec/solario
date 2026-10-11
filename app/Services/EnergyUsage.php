@@ -89,7 +89,7 @@ class EnergyUsage
     }
 
     /**
-     * kWh charged per car in the period (every car in CarCharge::CARS, 0 when none).
+     * kWh taken from the grid per car in the period (charged × CarCharge::GRID_RATIO; every car in CarCharge::CARS, 0 when none).
      *
      * @return array<string, float>
      */
@@ -102,7 +102,7 @@ class EnergyUsage
             ->pluck('kwh', 'car_id');
 
         return collect(CarCharge::CARS)
-            ->mapWithKeys(fn (string $car) => [$car => (float) ($charged[$car] ?? 0)])
+            ->mapWithKeys(fn (string $car) => [$car => ($charged[$car] ?? 0) * CarCharge::GRID_RATIO])
             ->all();
     }
 }

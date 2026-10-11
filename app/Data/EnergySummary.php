@@ -56,10 +56,10 @@ readonly class EnergySummary
     /** Amount ÷ total usage (PLN/kWh); null without prices. */
     public ?float $pricePerUnit;
 
-    /** @var array<string, float|null> PLN per car (kWh charged × price per kWh); null without prices. */
+    /** @var array<string, float|null> PLN per car (kWh taken from the grid × price per kWh); null without prices. */
     public array $carAmounts;
 
-    /** kWh used by the household: total usage − all car charges. */
+    /** kWh used by the household: total usage − all car usage. */
     public float $householdUsage;
 
     /** PLN for the household: amount − all car amounts; null without prices. */
@@ -77,7 +77,7 @@ readonly class EnergySummary
      * @param  float  $offPeakBalancedConsumed  kWh taken from the grid in T2 after hourly balancing
      * @param  float  $offPeakBalancedFedIn  kWh sent to the grid in T2 after hourly balancing
      * @param  Price|null  $price  prices for the month (prices only change at the start of a month)
-     * @param  array<string, float>  $carUsage  kWh charged per car id
+     * @param  array<string, float>  $carUsage  kWh taken from the grid per car id
      * @param  float  $lastDayHoursFraction  part of the last day's time the meter data covers (MeterDailyReading::hoursFraction())
      * @param  float  $lastDayPvFraction  share of the last day's PV production counted (MeterDailyReading::pvFraction())
      */
