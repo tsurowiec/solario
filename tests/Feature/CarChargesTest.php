@@ -102,7 +102,7 @@ class CarChargesTest extends TestCase
         CarCharge::create(['date' => '2026-09-30', 'car_id' => 'tesia', 'charged' => 5]);
 
         Livewire::test('pages::car-charges.index')
-            ->assertSeeInOrder(['02 Oct 2026', '01 Oct 2026', 'Total', '1,234 kWh', '1,419.1 kWh'])  // charged, taken (× 1.15)
+            ->assertSeeInOrder(['02 Oct 2026', '01 Oct 2026', 'Total', '1,234 kWh', '1,357.4 kWh'])  // charged, taken (× 1.1)
             ->assertDontSee('PLN');  // no energy data / prices
     }
 
@@ -139,7 +139,7 @@ class CarChargesTest extends TestCase
         $this->assertGreaterThan(0, $pricePerUnit);
 
         Livewire::test('pages::car-charges.index')
-            ->assertSeeInOrder(['Total', '15 kWh', '17.3 kWh', number_format(15 * CarCharge::GRID_RATIO * $pricePerUnit, 2).' PLN']);
+            ->assertSeeInOrder(['Total', '15 kWh', '16.5 kWh', number_format(15 * CarCharge::GRID_RATIO * $pricePerUnit, 2).' PLN']);
     }
 
     public function test_create_returns_to_the_list_of_the_new_charge(): void
