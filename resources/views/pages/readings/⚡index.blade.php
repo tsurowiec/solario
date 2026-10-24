@@ -225,7 +225,7 @@ class extends Component {
             @endif
             @if (count($this->days) >= 7)
                 <tfoot>
-                    @include('partials.readings-header-rows')
+                    @include('partials.readings-header-rows', ['reversed' => true])
                 </tfoot>
             @endif
         </flux:table>
