@@ -205,7 +205,7 @@ class MeterFetchTest extends TestCase
             ->first(fn ($event) => str_contains($event->command, 'meter:fetch'));
 
         $this->assertNotNull($event);
-        $this->assertSame('30 8,20 * * *', $event->expression);
+        $this->assertSame('0 8,20 * * *', $event->expression);
         $this->assertStringContainsString('--jitter=600', $event->command);
         $this->assertSame('Europe/Warsaw', $event->timezone);
     }
