@@ -36,6 +36,28 @@ class extends Component {
         return Carbon::parse($latest)->startOfMonth()->toDateString();
     }
 
+    /**
+     * Every month from the first meter day's month up to the latest month, newest first.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function months(): array
+    {
+        if (! $this->month) {
+            return [];
+        }
+
+        $first = Carbon::parse(MeterDailyReading::oldest('date')->value('date'))->startOfMonth();
+        $months = [];
+
+        for ($month = Carbon::parse($this->month); $month->gte($first); $month->subMonth()) {
+            $months[] = $month->toDateString();
+        }
+
+        return $months;
+    }
+
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
@@ -55,7 +77,9 @@ class extends Component {
         </flux:card>
 
         <div class="grid auto-rows-min gap-4 landscape:grid-cols-2">
-            <livewire:month-card :month="$this->month" :key="'month-'.$this->month" />
+            @foreach ($this->months as $month)
+                <livewire:month-card :month="$month" :key="'month-'.$month" />
+            @endforeach
         </div>
     @endif
 </div>
