@@ -157,21 +157,47 @@ class EnergyUsageTest extends TestCase
             'sell_monthly' => 1, 'power_monthly' => 2, 'subscription_monthly' => 3, 'network_monthly' => 4,
         ]);
 
-        // 2 days: raw consumed T1 1/day, T2 2/day; payable peak 6.0, off-peak 4.4 (see payable test)
+        // 2 days: balanced consumed T1 10, T2 6; payable peak 6.0, off-peak 4.4 → 4 (see payable test)
         $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
 
-        $net = 10 * 2 / 31                          // monthly fees prorated: 2 of 31 days
-            + (0.5 + 0.3 + 0.01) * 6.0              // peak sell + distr + quality × payable
-            + (0.002 + 0.003) * 2                   // peak oze + cogen × raw consumed
-            + (0.4 + 0.1 + 0.02) * 4.4              // off-peak sell + distr + quality × payable
-            + (0.004 + 0.006) * 4;                  // off-peak oze + cogen × raw consumed
+        // Gross rows, each from a net rounded to 0.01 PLN.
+        $gross = 0.07 + 0.16 + 0.23 + 0.32         // monthly fees prorated: 2 of 31 days
+            + 3.69 + 2.21 + 0.07                    // peak sell, distr, quality × 6
+            + 0.02 + 0.04                           // peak oze, cogen × 10
+            + 1.97 + 0.49 + 0.10                    // off-peak sell, distr, quality × 4
+            + 0.02 + 0.05;                          // off-peak oze, cogen × 6
 
-        $this->assertEqualsWithDelta($net * 1.23, $d->amount, 0.000001);
+        $this->assertEqualsWithDelta($gross, $d->amount, 0.000001);
         $this->assertEqualsWithDelta($d->amount / $d->totalUsage, $d->pricePerUnit, 0.000001);
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
             ->assertSee(number_format($d->amount, 2))
             ->assertSee('PLN/kWh');
+    }
+
+    public function test_amount_matches_the_october_2026_invoice(): void
+    {
+        $price = new Price([
+            'peak_sell' => 0.642, 'peak_distr' => 0.3298, 'peak_quality' => 0.0332, 'peak_oze' => 0.0073, 'peak_cogen' => 0.003,
+            'off_peak_sell' => 0.426, 'off_peak_distr' => 0.0512, 'off_peak_quality' => 0.0332, 'off_peak_oze' => 0.0073, 'off_peak_cogen' => 0.003,
+            'sell_monthly' => 8.5, 'power_monthly' => 24.05, 'subscription_monthly' => 0, 'network_monthly' => 10.86,
+        ]);
+
+        $d = new EnergySummary(
+            from: '2026-10-01',
+            to: '2026-10-31',
+            pvGenerated: 775,
+            peakConsumed: 204.525,
+            offPeakConsumed: 704.167,
+            fedIn: 536.838,
+            peakBalancedConsumed: 163.086,
+            peakBalancedFedIn: 258.422,
+            offPeakBalancedConsumed: 589.434,
+            offPeakBalancedFedIn: 122.244,
+            price: $price,
+        );
+
+        $this->assertSame(344.19, $d->amount);
     }
 
     public function test_cars_and_household_split_usage_and_amount(): void

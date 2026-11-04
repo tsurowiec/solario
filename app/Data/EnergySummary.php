@@ -45,9 +45,10 @@ readonly class EnergySummary
     public float $pvDays;
 
     /**
-     * Gross cost in PLN incl. VAT; null without prices:
-     * (monthly fees × days ÷ days in month + Σ zone: (sell + distr + quality) × payable + (oze + cogen) × raw consumed) × VAT.
-     * Monthly fees are prorated to the days the period covers ($coveredDays).
+     * Gross cost in PLN incl. VAT, calculated like the invoice; null without prices.
+     * One row per fee: each monthly fee prorated to the days the period covers ($coveredDays),
+     * and per zone sell, distr and quality × payable, oze and cogen × balanced consumed.
+     * kWh are rounded to whole numbers, each row's net and gross to 0.01 PLN; the amount is the sum of the rows.
      */
     public ?float $amount;
 
@@ -163,13 +164,19 @@ readonly class EnergySummary
 
     private function amount(Price $price): float
     {
-        $net = $price->monthlyFees() * $this->coveredDays / Carbon::parse($this->from)->daysInMonth;
+        $monthShare = $this->coveredDays / Carbon::parse($this->from)->daysInMonth;
+        $rows = array_map(fn (string $field) => $price->$field * $monthShare, Price::MONTHLY_FIELDS);
 
-        foreach (['peak' => [$this->peakPayable, $this->peakConsumed], 'off_peak' => [$this->offPeakPayable, $this->offPeakConsumed]] as $zone => [$payable, $consumed]) {
-            $net += ($price->{$zone.'_sell'} + $price->{$zone.'_distr'} + $price->{$zone.'_quality'}) * $payable;
-            $net += ($price->{$zone.'_oze'} + $price->{$zone.'_cogen'}) * $consumed;
+        foreach (['peak' => [$this->peakPayable, $this->peakBalancedConsumed], 'off_peak' => [$this->offPeakPayable, $this->offPeakBalancedConsumed]] as $zone => [$payable, $balancedConsumed]) {
+            foreach (['sell', 'distr', 'quality'] as $fee) {
+                $rows[] = $price->{$zone.'_'.$fee} * round($payable);
+            }
+
+            foreach (['oze', 'cogen'] as $fee) {
+                $rows[] = $price->{$zone.'_'.$fee} * round($balancedConsumed);
+            }
         }
 
-        return $net * Price::VAT;
+        return round(array_sum(array_map(fn (float $net) => round(round($net, 2) * Price::VAT, 2), $rows)), 2);
     }
 }
