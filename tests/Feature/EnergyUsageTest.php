@@ -389,6 +389,25 @@ class EnergyUsageTest extends TestCase
         $this->assertSame('2026-11-02', $this->month('2026-11-01')->to);
     }
 
+    public function test_t3_counts_as_off_peak(): void
+    {
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-10-31', 'value' => 1310]);
+        $this->meterDays('2026-10-01', '2026-10-01', [
+            't2_balanced_consumed' => 2, 't2_balanced_fed_in' => 1,
+            't3_consumed' => 5, 't3_fed_in' => 6,
+            't3_balanced_consumed' => 3, 't3_balanced_fed_in' => 1,
+        ]);
+
+        $d = $this->month('2026-10-01');
+
+        $this->assertEqualsWithDelta(7.0, $d->offPeakConsumed, 0.0001);   // T2 2 + T3 5
+        $this->assertEqualsWithDelta(13.0, $d->fedIn, 0.0001);            // T1 3 + T2 4 + T3 6
+        $this->assertEqualsWithDelta(5.0, $d->offPeakBalancedConsumed, 0.0001);
+        $this->assertEqualsWithDelta(2.0, $d->offPeakBalancedFedIn, 0.0001);
+        $this->assertEqualsWithDelta(3.4, $d->offPeakPayable, 0.0001);    // 5 − 0.8 × 2
+    }
+
     private function month(string $date)
     {
         return app(EnergyUsage::class)->month(Carbon::parse($date));

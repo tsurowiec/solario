@@ -202,6 +202,37 @@ class MeterImportTest extends TestCase
      * @param  (callable(string, int): string)|null  $value  value per type and hour; defaults to 0,101 / 0,202 per type
      * @param  list<string>  $types  row types to include
      */
+    public function test_t3_rows_are_stored_and_count_towards_the_hours(): void
+    {
+        $lines = ['Data; Strefa; Wartość ;Rodzaj;Status;'];
+
+        foreach (self::TYPES as $type) {
+            for ($hour = 1; $hour <= 24; $hour++) {
+                $zone = match (true) {
+                    $hour >= 7 && $hour <= 13 => 'T1',
+                    $hour >= 19 && $hour <= 22 => 'T2',
+                    default => 'T3',
+                };
+                $value = $type === 'pobór [kWh]' ? '0,300' : '0,100';
+                $lines[] = "2026-10-01 {$hour}:00;{$zone};{$value};{$type}; licznik; ";
+            }
+        }
+
+        $result = app(MeterCsvImporter::class)->importString(implode("\n", $lines));
+
+        $this->assertSame([], $result->incomplete);
+
+        $reading = MeterDailyReading::first();
+
+        // 24 hours: 7 in T1, 4 in T2, 13 in T3.
+        $this->assertSame(24, $reading->hours);
+        $this->assertEqualsWithDelta(3.9, $reading->t3_consumed, 0.0001);
+        $this->assertEqualsWithDelta(1.3, $reading->t3_fed_in, 0.0001);
+        $this->assertEqualsWithDelta(2.6, $reading->t3_balanced_consumed, 0.0001);
+        $this->assertSame(0.0, $reading->t3_balanced_fed_in);
+        $this->assertEqualsWithDelta(1.2, $reading->t2_consumed, 0.0001);
+    }
+
     private function csv(array $dates, int $hours = 24, ?array $skipHour = null, ?callable $value = null, array $types = self::TYPES): string
     {
         $lines = ['Data; Strefa; Wartość ;Rodzaj;Status;'];

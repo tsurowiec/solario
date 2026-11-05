@@ -9,7 +9,7 @@ use InvalidArgumentException;
 /**
  * Imports the hourly meter CSV export and stores it as one MeterDailyReading per day.
  *
- * Row format: "Y-m-d H:00;T1|T2;value;type;status;" with decimal commas.
+ * Row format: "Y-m-d H:00;T1|T2|T3;value;type;status;" with decimal commas.
  * Hours run 1:00–24:00 (end of the hour), so "24:00" belongs to the same day.
  * Only consumed and fed-in rows are read; the balanced values are calculated per hour
  * (hourly net-metering: balanced consumed = max(0, consumed − fed-in), balanced fed-in the reverse),
@@ -26,7 +26,7 @@ class MeterCsvImporter
         'oddanie [kWh]' => 'fed_in',
     ];
 
-    private const ZONES = ['T1' => 't1', 'T2' => 't2'];
+    private const ZONES = ['T1' => 't1', 'T2' => 't2', 'T3' => 't3'];
 
     public function import(string $path): MeterImportResult
     {

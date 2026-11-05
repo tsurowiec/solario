@@ -109,7 +109,7 @@ class extends Component {
     {
         $meter = collect($this->days)->pluck('meter')->filter();
 
-        return collect(MeterDailyReading::VALUE_FIELDS)
+        return collect(MeterDailyReading::TABLE_FIELDS)
             ->mapWithKeys(fn (string $field) => [$field => (float) $meter->sum($field)])
             ->all();
     }
@@ -201,7 +201,7 @@ class extends Component {
                                 <flux:button size="xs" variant="ghost" icon="pencil" class="-my-1 size-5!" href="{{ route('pv-inverter.edit', $row['pvReading']) }}" wire:navigate />
                             @endif
                         </flux:table.cell>
-                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                        @foreach (\App\Models\MeterDailyReading::TABLE_FIELDS as $i => $field)
                             <flux:table.cell align="end" @class(['border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ $row['meter'] ? number_format($row['meter']->$field, 3) : '' }}</flux:table.cell>
                         @endforeach
                     </flux:table.row>
@@ -217,7 +217,7 @@ class extends Component {
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="w-5 px-0" />
-                        @foreach (\App\Models\MeterDailyReading::VALUE_FIELDS as $i => $field)
+                        @foreach (\App\Models\MeterDailyReading::TABLE_FIELDS as $i => $field)
                             <flux:table.cell align="end" @class(['font-semibold', 'border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ number_format($this->totals[$field], 3) }}</flux:table.cell>
                         @endforeach
                     </flux:table.row>

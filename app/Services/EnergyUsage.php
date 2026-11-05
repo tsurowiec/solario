@@ -75,12 +75,13 @@ class EnergyUsage
             pvGenerated: $this->interpolator->forDate($to, $last->pvFraction())
                 - $this->interpolator->forDate($from->copy()->subDay()),
             peakConsumed: $days->sum('t1_consumed'),
-            offPeakConsumed: $days->sum('t2_consumed'),
-            fedIn: $days->sum(fn (MeterDailyReading $r) => $r->t1_fed_in + $r->t2_fed_in),
+            // T3 is stored separately and counted as off-peak until the three-zone tariff is handled.
+            offPeakConsumed: $days->sum(fn (MeterDailyReading $r) => $r->t2_consumed + $r->t3_consumed),
+            fedIn: $days->sum(fn (MeterDailyReading $r) => $r->t1_fed_in + $r->t2_fed_in + $r->t3_fed_in),
             peakBalancedConsumed: $days->sum('t1_balanced_consumed'),
             peakBalancedFedIn: $days->sum('t1_balanced_fed_in'),
-            offPeakBalancedConsumed: $days->sum('t2_balanced_consumed'),
-            offPeakBalancedFedIn: $days->sum('t2_balanced_fed_in'),
+            offPeakBalancedConsumed: $days->sum(fn (MeterDailyReading $r) => $r->t2_balanced_consumed + $r->t3_balanced_consumed),
+            offPeakBalancedFedIn: $days->sum(fn (MeterDailyReading $r) => $r->t2_balanced_fed_in + $r->t3_balanced_fed_in),
             price: Price::activeOn($from),
             carUsage: $this->carUsage($from, $to),
             lastDayHoursFraction: $last->hoursFraction(),
