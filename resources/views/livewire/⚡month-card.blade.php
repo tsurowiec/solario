@@ -61,15 +61,20 @@ new class extends Component {
         <flux:separator class="my-6" />
 
         @if ($d->amount !== null)
-            <div class="grid grid-cols-2 gap-2 mb-4">
-                <x-stat icon="banknotes" color="text-blue-400" :value="number_format($d->amount, 2)" unit="PLN" :note="$d->estimatedAmount !== null ? '~'.number_format($d->estimatedAmount, 2) : null" />
+            <div class="grid grid-cols-2 gap-2">
+                <x-stat icon="banknotes" color="text-blue-400" :value="number_format($d->amount, 2)" unit="PLN" />
                 <x-stat icon="tag" color="text-blue-400" :value="number_format($d->pricePerUnit, 2)" unit="PLN/kWh" />
             </div>
         @endif
-        <div class="grid grid-cols-2 gap-2">
-            <x-stat icon="sun" color="text-blue-400" :value="number_format($d->peakPayable, 1)" unit="kWh" :note="$d->peakSurplus > 0 ? number_format(-$d->peakSurplus, 1) : null" />
-            <x-stat icon="moon" color="text-blue-400" :value="number_format($d->offPeakPayable, 1)" unit="kWh" :note="$d->offPeakSurplus > 0 ? number_format(-$d->offPeakSurplus, 1) : null" />
-        </div>
+        {{-- Whole-month estimates while the month is only partly covered. --}}
+        @if ($d->estimatedUsage !== null)
+            <div class="grid grid-cols-2 gap-2 mt-4" title="{{ __('Estimated for the whole month') }}">
+                @if ($d->estimatedAmount !== null)
+                    <x-stat icon="banknotes" color="text-zinc-400" :value="'~'.number_format($d->estimatedAmount, 2)" unit="PLN" />
+                @endif
+                <div class="col-start-2"><x-stat icon="light-bulb" color="text-zinc-400" :value="'~'.number_format($d->estimatedUsage)" unit="kWh" /></div>
+            </div>
+        @endif
 
         @foreach ($d->carUsage as $car => $kWh)
             <div class="grid grid-cols-2 gap-2 mt-4">
@@ -104,15 +109,11 @@ new class extends Component {
         <flux:separator class="my-6" />
 
         @if ($d->amount !== null)
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="grid grid-cols-2 gap-2">
                 <x-stat icon="banknotes" color="text-blue-400" :value="number_format($d->perDay($d->amount), 2)" unit="PLN/d" />
                 <x-stat icon="tag" color="text-blue-400" :value="number_format($d->pricePerUnit, 2)" unit="PLN/kWh" />
             </div>
         @endif
-        <div class="grid grid-cols-2 gap-2">
-            <x-stat icon="sun" color="text-blue-400" :value="number_format($d->peakPayablePercent, 1)" unit="%" />
-            <x-stat icon="moon" color="text-blue-400" :value="number_format($d->offPeakPayablePercent, 1)" unit="%" />
-        </div>
 
         @foreach ($d->carUsage as $car => $kWh)
             <div class="grid grid-cols-2 gap-2 mt-4">

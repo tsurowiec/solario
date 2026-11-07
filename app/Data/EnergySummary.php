@@ -14,26 +14,34 @@ readonly class EnergySummary
 
     public float $totalUsage;
 
-    /** kWh taken from the grid (raw, before balancing), both zones. */
+    /** kWh taken from the grid (raw, before balancing), all zones. */
     public float $consumed;
 
-    /** kWh to pay for in the peak zone (T1): balanced consumed − 0.8 × balanced fed-in, never below 0. */
+    /** Whether the three-zone tariff applies (Price::hasEarlyPeak()); with two zones early-peak stays empty. */
+    public bool $hasEarlyPeak;
+
+    /**
+     * Settlement per tariff zone, keyed and ordered by Price::ZONES (most expensive first):
+     * 1. credit carried from the previous month ($creditIn) is applied, most expensive zone first;
+     * 2. each zone's own credit (Price::FED_IN_RATIO × balanced fed-in) lowers its own balanced consumed;
+     * 3. the zones' surplus and any carried credit left are pooled and applied, most expensive zone first;
+     * 4. what is still left carries to the next month ($creditOut).
+     *
+     * @var array<string, ZoneFlow>
+     */
+    public array $flows;
+
+    /** kWh to pay for in the peak zone. */
     public float $peakPayable;
 
-    /** Peak credit left over when 0.8 × balanced fed-in exceeds balanced consumed (≥ 0); it is moved to off-peak. */
-    public float $peakSurplus;
+    /** kWh to pay for in the early-peak zone (0 with two zones). */
+    public float $earlyPeakPayable;
 
-    /** kWh to pay for in the off-peak zone (T2): balanced consumed − 0.8 × balanced fed-in − peak surplus, never below 0. */
+    /** kWh to pay for in the off-peak zone. */
     public float $offPeakPayable;
 
-    /** Credit left over after off-peak (≥ 0). */
-    public float $offPeakSurplus;
-
-    /** Share of the paid kWh in the peak zone, 0–100 %. */
-    public float $peakPayablePercent;
-
-    /** Share of the paid kWh in the off-peak zone, 0–100 %; 100 % when nothing is paid. */
-    public float $offPeakPayablePercent;
+    /** Credit left after settling every zone; it carries to the next month. */
+    public float $creditOut;
 
     /** Number of days in the period, both ends included. */
     public int $days;
@@ -47,13 +55,16 @@ readonly class EnergySummary
     /**
      * Gross cost in PLN incl. VAT, calculated like the invoice; null without prices.
      * One row per fee: each monthly fee prorated to the days the period covers ($coveredDays),
-     * and per zone sell, distr and quality × payable, oze and cogen × balanced consumed.
+     * and per zone (early-peak only with three zones) sell, distr and quality × payable, oze and cogen × balanced consumed.
      * kWh are rounded to whole numbers, each row's net and gross to 0.01 PLN; the amount is the sum of the rows.
      */
     public ?float $amount;
 
     /** Amount projected to the whole month (amount ÷ covered days × days in month); null without prices or when the period covers the full month. */
     public ?float $estimatedAmount;
+
+    /** Total usage projected to the whole month (total usage ÷ covered days × days in month); null when the period covers the full month. */
+    public ?float $estimatedUsage;
 
     /** Amount ÷ total usage (PLN/kWh); null without prices. */
     public ?float $pricePerUnit;
@@ -88,6 +99,10 @@ readonly class EnergySummary
      * @param  array<string, float>  $carUsage  kWh taken from the grid per car id
      * @param  float  $lastDayHoursFraction  part of the last day's time the meter data covers (MeterDailyReading::hoursFraction())
      * @param  float  $lastDayPvFraction  share of the last day's PV production counted (MeterDailyReading::pvFraction())
+     * @param  float  $earlyPeakConsumed  kWh taken from the grid in early-peak (raw, before balancing)
+     * @param  float  $earlyPeakBalancedConsumed  kWh taken from the grid in early-peak after hourly balancing
+     * @param  float  $earlyPeakBalancedFedIn  kWh sent to the grid in early-peak after hourly balancing
+     * @param  float  $creditIn  credit carried from the previous month (kWh, after Price::FED_IN_RATIO)
      */
     public function __construct(
         public string $from,
@@ -104,31 +119,33 @@ readonly class EnergySummary
         public array $carUsage = [],
         float $lastDayHoursFraction = 1.0,
         float $lastDayPvFraction = 1.0,
+        public float $earlyPeakConsumed = 0.0,
+        public float $earlyPeakBalancedConsumed = 0.0,
+        public float $earlyPeakBalancedFedIn = 0.0,
+        public float $creditIn = 0.0,
     ) {
         $this->days = (int) Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1;
         $this->coveredDays = $this->days - 1 + $lastDayHoursFraction;
         $this->pvDays = $this->days - 1 + $lastDayPvFraction;
-        $this->consumed = $peakConsumed + $offPeakConsumed;
+        $this->consumed = $peakConsumed + $earlyPeakConsumed + $offPeakConsumed;
         $this->autoConsumed = $pvGenerated - $fedIn;
         $this->autoConsumedRatio = $pvGenerated > 0 ? $this->autoConsumed / $pvGenerated * 100 : 0.0;
         $this->totalUsage = $this->consumed + $this->autoConsumed;
-        $peak = $peakBalancedConsumed - Price::FED_IN_RATIO * $peakBalancedFedIn;
-        $this->peakPayable = max(0.0, $peak);
-        $this->peakSurplus = max(0.0, -$peak);
-
-        $offPeak = $offPeakBalancedConsumed - Price::FED_IN_RATIO * $offPeakBalancedFedIn - $this->peakSurplus;
-        $this->offPeakPayable = max(0.0, $offPeak);
-        $this->offPeakSurplus = max(0.0, -$offPeak);
-
-        $payable = $this->peakPayable + $this->offPeakPayable;
-        $this->peakPayablePercent = $payable > 0 ? $this->peakPayable / $payable * 100 : 0.0;
-        $this->offPeakPayablePercent = 100 - $this->peakPayablePercent;
+        $this->hasEarlyPeak = $price?->hasEarlyPeak() ?? false;
+        [$this->flows, $this->creditOut] = self::settle([
+            'peak' => [$peakBalancedConsumed, $peakBalancedFedIn],
+            'early_peak' => [$earlyPeakBalancedConsumed, $earlyPeakBalancedFedIn],
+            'off_peak' => [$offPeakBalancedConsumed, $offPeakBalancedFedIn],
+        ], $creditIn);
+        $this->peakPayable = $this->flows['peak']->payable;
+        $this->earlyPeakPayable = $this->flows['early_peak']->payable;
+        $this->offPeakPayable = $this->flows['off_peak']->payable;
 
         $this->amount = $price ? $this->amount($price) : null;
         $daysInMonth = Carbon::parse($from)->daysInMonth;
-        $this->estimatedAmount = $price && $this->coveredDays < $daysInMonth && $this->coveredDays > 0
-            ? $this->amount / $this->coveredDays * $daysInMonth
-            : null;
+        $partial = $this->coveredDays < $daysInMonth && $this->coveredDays > 0;
+        $this->estimatedAmount = $price && $partial ? $this->amount / $this->coveredDays * $daysInMonth : null;
+        $this->estimatedUsage = $partial ? $this->totalUsage / $this->coveredDays * $daysInMonth : null;
         $this->pricePerUnit = $price ? ($this->totalUsage > 0 ? $this->amount / $this->totalUsage : 0.0) : null;
 
         $this->carAmounts = array_map(fn (float $kWh) => $price ? $kWh * $this->pricePerUnit : null, $carUsage);
@@ -162,18 +179,73 @@ readonly class EnergySummary
         return $this->pvDays > 0 ? $value / $this->pvDays : 0.0;
     }
 
+    /**
+     * Settles the zones as described at $flows.
+     *
+     * @param  array<string, array{float, float}>  $balanced  [balanced consumed, balanced fed-in] per zone, most expensive first
+     * @return array{array<string, ZoneFlow>, float} the flows and the credit left
+     */
+    private static function settle(array $balanced, float $credit): array
+    {
+        $left = array_map(fn (array $zone) => $zone[0], $balanced);
+
+        $fromPrevious = self::spend($left, $credit);
+
+        $fromOwn = [];
+        $toPool = [];
+        foreach ($balanced as $zone => [, $fedIn]) {
+            $own = Price::FED_IN_RATIO * $fedIn;
+            $fromOwn[$zone] = min($left[$zone], $own);
+            $left[$zone] -= $fromOwn[$zone];
+            $toPool[$zone] = $own - $fromOwn[$zone];
+            $credit += $toPool[$zone];
+        }
+
+        $fromOther = self::spend($left, $credit);
+
+        $flows = [];
+        foreach ($balanced as $zone => [$consumed, $fedIn]) {
+            $flows[$zone] = new ZoneFlow($zone, $fedIn, $consumed, $fromPrevious[$zone], $fromOwn[$zone], $fromOther[$zone], $toPool[$zone]);
+        }
+
+        return [$flows, $credit];
+    }
+
+    /**
+     * Applies credit to what is left in each zone, in the given order; both are updated.
+     *
+     * @param  array<string, float>  $left  kWh left to pay for per zone
+     * @return array<string, float> kWh of credit applied per zone
+     */
+    private static function spend(array &$left, float &$credit): array
+    {
+        $used = [];
+        foreach ($left as $zone => $kWh) {
+            $used[$zone] = min($kWh, $credit);
+            $left[$zone] -= $used[$zone];
+            $credit -= $used[$zone];
+        }
+
+        return $used;
+    }
+
     private function amount(Price $price): float
     {
         $monthShare = $this->coveredDays / Carbon::parse($this->from)->daysInMonth;
         $rows = array_map(fn (string $field) => $price->$field * $monthShare, Price::MONTHLY_FIELDS);
 
-        foreach (['peak' => [$this->peakPayable, $this->peakBalancedConsumed], 'off_peak' => [$this->offPeakPayable, $this->offPeakBalancedConsumed]] as $zone => [$payable, $balancedConsumed]) {
+        foreach ($this->flows as $zone => $flow) {
+            // Two-zone prices have no early-peak rows (its flow is empty then anyway).
+            if ($zone === 'early_peak' && ! $this->hasEarlyPeak) {
+                continue;
+            }
+
             foreach (['sell', 'distr', 'quality'] as $fee) {
-                $rows[] = $price->{$zone.'_'.$fee} * round($payable);
+                $rows[] = $price->{$zone.'_'.$fee} * round($flow->payable);
             }
 
             foreach (['oze', 'cogen'] as $fee) {
-                $rows[] = $price->{$zone.'_'.$fee} * round($balancedConsumed);
+                $rows[] = $price->{$zone.'_'.$fee} * round($flow->consumed);
             }
         }
 

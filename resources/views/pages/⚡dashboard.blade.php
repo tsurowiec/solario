@@ -77,6 +77,10 @@ class extends Component {
         </flux:card>
 
         <div class="grid auto-rows-min gap-4 landscape:grid-cols-2">
+            {{-- The Flows card spans both columns. --}}
+            <div class="landscape:col-span-2">
+                <livewire:month-flows :month="$this->month" :key="'flows-'.$this->month" />
+            </div>
             @foreach ($this->months as $month)
                 <livewire:month-card :month="$month" :key="'month-'.$month" />
             @endforeach

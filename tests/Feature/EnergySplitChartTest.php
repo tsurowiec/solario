@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MeterDailyReading;
+use App\Models\Price;
 use App\Models\PvInverterReading;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,8 +22,19 @@ class EnergySplitChartTest extends TestCase
 
         // Total usage: consumed 3 + auto-consumed (PV 20 − fed-in 7) = 16; payable peak 1, off-peak 2.
         $this->assertSame(['Jul'], $data['categories']);
-        $this->assertEquals(['sun' => [13], 'offPeak' => [2], 'peak' => [1]], $data['kwh']);
-        $this->assertEquals(['sun' => [81.3], 'offPeak' => [12.5], 'peak' => [6.3]], $data['percent']);
+        $this->assertEquals(['sun' => [13], 'offPeak' => [2], 'earlyPeak' => [0], 'peak' => [1]], $data['kwh']);
+        $this->assertEquals(['sun' => [81.3], 'offPeak' => [12.5], 'earlyPeak' => [0], 'peak' => [6.3]], $data['percent']);
+    }
+
+    public function test_three_zones_add_early_peak_payable(): void
+    {
+        Price::create(['since' => '2026-07-01', ...$this->twoZonePrices(0), 'early_peak_sell' => 1]);
+        $this->july();
+
+        $data = Livewire::test('energy-split-chart', ['month' => '2026-07-15'])->instance()->chartData;
+
+        // T1 (1 kWh) is early-peak, T2 (2 kWh) peak, nothing left for off-peak; sun 16 − 3 = 13.
+        $this->assertEquals(['sun' => [13], 'offPeak' => [0], 'earlyPeak' => [1], 'peak' => [2]], $data['kwh']);
     }
 
     public function test_months_without_data_after_the_first_are_zero(): void

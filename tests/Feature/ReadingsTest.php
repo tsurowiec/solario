@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MeterDailyReading;
+use App\Models\Price;
 use App\Models\PvInverterReading;
 use App\Models\User;
 use App\Services\PvInverterInterpolator;
@@ -57,6 +58,30 @@ class ReadingsTest extends TestCase
         Livewire::test('pages::readings.index')
             ->assertSeeInOrder(['Inverter', 'Peak (T1)', 'Off-Peak (T2)', 'Measured', 'Balanced', 'Measured', 'Balanced', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in', 'Consumed', 'Fed-in'])
             ->assertSeeInOrder(['1.111', '2.222', '3.333', '4.444', '5.555', '6.666', '7.777', '8.888']);
+    }
+
+    public function test_three_zone_prices_label_the_zones_and_show_t3(): void
+    {
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0), 'early_peak_sell' => 1]);
+        MeterDailyReading::create(['date' => '2026-10-01', ...array_fill_keys(MeterDailyReading::VALUE_FIELDS, 0), 't3_consumed' => 9.876]);
+
+        Livewire::test('pages::readings.index')
+            ->set('month', '2026-10')
+            ->assertSeeInOrder(['Early-Peak (T1)', 'Peak (T2)', 'Off-Peak (T3)'])
+            ->assertSee('9.876');
+    }
+
+    public function test_two_zones_show_t3_only_when_the_month_has_t3_data(): void
+    {
+        MeterDailyReading::create(['date' => '2026-10-01', ...array_fill_keys(MeterDailyReading::VALUE_FIELDS, 0)]);
+        MeterDailyReading::create(['date' => '2026-11-01', ...array_fill_keys(MeterDailyReading::VALUE_FIELDS, 0), 't3_fed_in' => 1.5]);
+
+        Livewire::test('pages::readings.index')
+            ->set('month', '2026-10')
+            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)'])
+            ->assertDontSee('(T3)')
+            ->set('month', '2026-11')
+            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)', 'Off-Peak (T3)']);
     }
 
     public function test_only_actual_pv_readings_are_editable(): void

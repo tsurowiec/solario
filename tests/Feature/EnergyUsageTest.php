@@ -57,7 +57,7 @@ class EnergyUsageTest extends TestCase
 
     public function test_partial_last_day_counts_as_part_of_a_day_in_averages(): void
     {
-        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0.1)]);
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-10-10', 'value' => 1200]);
         $this->meterDays('2026-10-01', '2026-10-04');
@@ -75,7 +75,7 @@ class EnergyUsageTest extends TestCase
         $this->assertEqualsWithDelta($d->amount / 4.5 * 31, $d->estimatedAmount, 0.0001);
 
         Livewire::test('month-card', ['month' => '2026-10-01'])
-            ->assertSee('20.0 <span', false);   // PV daily average
+            ->assertSee('>20.0</span>', false);   // PV daily average
     }
 
     public function test_averages_are_zero_when_nothing_is_counted(): void
@@ -92,60 +92,118 @@ class EnergyUsageTest extends TestCase
 
         $this->assertEqualsWithDelta(2 * (5 - 0.8 * 2.5), $d->peakPayable, 0.0001);      // 6.0
         $this->assertEqualsWithDelta(2 * (3 - 0.8 * 1), $d->offPeakPayable, 0.0001);     // 4.4
-        $this->assertSame(0.0, $d->peakSurplus);
-        $this->assertSame(0.0, $d->offPeakSurplus);
+        $this->assertEqualsWithDelta(4.0, $d->flows['peak']->fromOwn, 0.0001);
+        $this->assertSame(0.0, $d->flows['off_peak']->fromOtherZones);
+        $this->assertSame(0.0, $d->creditOut);
     }
 
-    public function test_peak_surplus_is_subtracted_from_off_peak(): void
+    public function test_peak_surplus_goes_to_off_peak(): void
     {
         $d = $this->payable(peak: [1, 5], offPeak: [10, 2]);
 
-        // Peak: 2 × (1 − 4) = −6 → 0, surplus 6; off-peak: 2 × (10 − 1.6) − 6 = 10.8
+        // Peak: own credit 8 covers 2, surplus 6; off-peak: 20 − 3.2 − 6 = 10.8
         $this->assertSame(0.0, $d->peakPayable);
-        $this->assertEqualsWithDelta(6.0, $d->peakSurplus, 0.0001);
+        $this->assertEqualsWithDelta(2.0, $d->flows['peak']->fromOwn, 0.0001);
+        $this->assertEqualsWithDelta(6.0, $d->flows['off_peak']->fromOtherZones, 0.0001);
         $this->assertEqualsWithDelta(10.8, $d->offPeakPayable, 0.0001);
-        $this->assertSame(0.0, $d->offPeakSurplus);
+        $this->assertSame(0.0, $d->creditOut);
     }
 
-    public function test_negative_off_peak_is_shown_as_zero_with_the_surplus(): void
+    public function test_off_peak_surplus_goes_to_peak(): void
     {
-        $d = $this->payable(peak: [1, 5], offPeak: [1, 2]);
+        $d = $this->payable(peak: [10, 0], offPeak: [1, 5]);
 
-        // Off-peak: 2 × (1 − 1.6) − 6 = −7.2 → 0, surplus 7.2
+        // Off-peak: own credit 8 covers 2, surplus 6; peak: 20 − 6 = 14
         $this->assertSame(0.0, $d->offPeakPayable);
-        $this->assertEqualsWithDelta(7.2, $d->offPeakSurplus, 0.0001);
-
-        Livewire::test('month-card', ['month' => '2026-10-01'])
-            ->assertSeeInOrder(['0.0', 'kWh', '(-6.0)', '0.0', 'kWh', '(-7.2)']);
+        $this->assertEqualsWithDelta(6.0, $d->flows['peak']->fromOtherZones, 0.0001);
+        $this->assertEqualsWithDelta(14.0, $d->peakPayable, 0.0001);
     }
 
-    public function test_payable_percentages_split_the_paid_kwh(): void
+    public function test_credit_left_carries_to_the_next_month_and_is_applied_first(): void
     {
-        $d = $this->payable(peak: [1, 5], offPeak: [10, 2]);
+        $october = $this->payable(peak: [1, 5], offPeak: [1, 2]);
 
-        // Peak 0, off-peak 10.8 → 0 % / 100 %
-        $this->assertSame(0.0, $d->peakPayablePercent);
-        $this->assertSame(100.0, $d->offPeakPayablePercent);
+        // Surplus: peak 8 − 2 = 6, off-peak 3.2 − 2 = 1.2
+        $this->assertSame(0.0, $october->peakPayable + $october->offPeakPayable);
+        $this->assertEqualsWithDelta(7.2, $october->creditOut, 0.0001);
+
+        $this->meterDays('2026-11-01', '2026-11-01', ['t1_balanced_consumed' => 5, 't1_balanced_fed_in' => 1, 't2_balanced_consumed' => 4]);
+        $november = $this->month('2026-11-01');
+
+        // Carried 7.2 first: peak 5 → 0, off-peak 4 − 2.2 = 1.8; peak's own credit 0.8 is then surplus → off-peak 1.0
+        $this->assertEqualsWithDelta(7.2, $november->creditIn, 0.0001);
+        $this->assertEqualsWithDelta(5.0, $november->flows['peak']->fromPreviousMonth, 0.0001);
+        $this->assertEqualsWithDelta(2.2, $november->flows['off_peak']->fromPreviousMonth, 0.0001);
+        $this->assertSame(0.0, $november->flows['peak']->fromOwn);
+        $this->assertEqualsWithDelta(0.8, $november->flows['off_peak']->fromOtherZones, 0.0001);
+        $this->assertEqualsWithDelta(1.0, $november->offPeakPayable, 0.0001);
+        $this->assertSame(0.0, $november->creditOut);
     }
 
-    public function test_payable_percentages_when_both_zones_are_paid(): void
+    public function test_credit_passes_through_a_month_without_data(): void
     {
-        $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);
+        $this->payable(peak: [1, 5], offPeak: [1, 2]);
+        $this->meterDays('2026-12-01', '2026-12-01', ['t1_balanced_consumed' => 10]);
 
-        // Peak 6.0, off-peak 4.4 → 57.7 % / 42.3 %
-        $this->assertEqualsWithDelta(6 / 10.4 * 100, $d->peakPayablePercent, 0.0001);
-        $this->assertEqualsWithDelta(4.4 / 10.4 * 100, $d->offPeakPayablePercent, 0.0001);
-
-        Livewire::test('month-card', ['month' => '2026-10-01'])
-            ->assertSeeInOrder(['57.7', '%', '42.3', '%']);
+        $this->assertNull($this->month('2026-11-01'));
+        $this->assertEqualsWithDelta(7.2, $this->month('2026-12-01')->creditIn, 0.0001);
     }
 
-    public function test_nothing_paid_puts_100_percent_on_off_peak(): void
+    public function test_three_zones_settle_most_expensive_first(): void
     {
-        $d = $this->payable(peak: [1, 5], offPeak: [1, 2]);
+        // The Flows card example: peak (sunset), early-peak (sunrise), off-peak (moon).
+        $d = new EnergySummary('2026-10-01', '2026-10-31', 0, 0, 0, 0,
+            peakBalancedConsumed: 30, peakBalancedFedIn: 10,
+            offPeakBalancedConsumed: 400, offPeakBalancedFedIn: 200,
+            earlyPeakBalancedConsumed: 30, earlyPeakBalancedFedIn: 200,
+            creditIn: 5,
+        );
 
-        $this->assertSame(0.0, $d->peakPayablePercent);
-        $this->assertSame(100.0, $d->offPeakPayablePercent);
+        $flow = fn (string $zone) => array_map(fn ($v) => is_float($v) ? round($v, 4) : $v, (array) $d->flows[$zone]);
+
+        $this->assertEquals(['zone' => 'peak', 'fedIn' => 10.0, 'consumed' => 30.0, 'fromPreviousMonth' => 5.0, 'fromOwn' => 8.0, 'fromOtherZones' => 17.0, 'toPool' => 0.0, 'payable' => 0.0], $flow('peak'));
+        $this->assertEquals(['zone' => 'early_peak', 'fedIn' => 200.0, 'consumed' => 30.0, 'fromPreviousMonth' => 0.0, 'fromOwn' => 30.0, 'fromOtherZones' => 0.0, 'toPool' => 130.0, 'payable' => 0.0], $flow('early_peak'));
+        $this->assertEquals(['zone' => 'off_peak', 'fedIn' => 200.0, 'consumed' => 400.0, 'fromPreviousMonth' => 0.0, 'fromOwn' => 160.0, 'fromOtherZones' => 113.0, 'toPool' => 0.0, 'payable' => 127.0], $flow('off_peak'));
+        $this->assertEqualsWithDelta(0.0, $d->creditOut, 0.0001);
+    }
+
+    public function test_carried_credit_left_joins_the_surplus(): void
+    {
+        // Credit 10 → peak 30 − 10; own credit 4 / 40 / 0; early-peak surplus 32 → peak 16 → 0, off-peak 50 − 16 = 34
+        $d = new EnergySummary('2026-10-01', '2026-10-31', 0, 0, 0, 0,
+            peakBalancedConsumed: 30, peakBalancedFedIn: 5,
+            offPeakBalancedConsumed: 50,
+            earlyPeakBalancedConsumed: 8, earlyPeakBalancedFedIn: 50,
+            creditIn: 10,
+        );
+
+        $this->assertSame(0.0, $d->peakPayable);
+        $this->assertSame(0.0, $d->earlyPeakPayable);
+        $this->assertEqualsWithDelta(34.0, $d->offPeakPayable, 0.0001);
+        $this->assertSame(0.0, $d->creditOut);
+    }
+
+    public function test_early_peak_prices_switch_meter_zones_to_three(): void
+    {
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0), 'early_peak_sell' => 1]);
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-10-10', 'value' => 1200]);
+        $this->meterDays('2026-10-01', '2026-10-01', [
+            't1_consumed' => 10, 't2_consumed' => 20, 't3_consumed' => 30,
+            't1_balanced_consumed' => 10, 't2_balanced_consumed' => 20, 't3_balanced_consumed' => 30,
+        ]);
+
+        $d = $this->month('2026-10-01');
+
+        // T1 morning = early-peak, T2 evening = peak, T3 = off-peak.
+        $this->assertTrue($d->hasEarlyPeak);
+        $this->assertEqualsWithDelta(10.0, $d->earlyPeakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(20.0, $d->peakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(30.0, $d->offPeakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(60.0, $d->consumed, 0.0001);
+        $this->assertEqualsWithDelta(10.0, $d->earlyPeakPayable, 0.0001);
+        // Only early-peak sell is priced: 10 kWh × 1 PLN × VAT.
+        $this->assertSame(12.3, $d->amount);
     }
 
     public function test_amount_and_price_per_kwh(): void
@@ -202,7 +260,7 @@ class EnergyUsageTest extends TestCase
 
     public function test_cars_and_household_split_usage_and_amount(): void
     {
-        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0.1)]);
         CarCharge::create(['date' => '2026-10-01', 'car_id' => 'tesia', 'charged' => 10]);
         CarCharge::create(['date' => '2026-10-02', 'car_id' => 'tesia', 'charged' => 5]);
         CarCharge::create(['date' => '2026-10-03', 'car_id' => 'tesia', 'charged' => 99]);  // outside the period (1–2 Oct)
@@ -244,19 +302,25 @@ class EnergyUsageTest extends TestCase
 
     public function test_partial_month_shows_an_estimate_for_the_whole_month(): void
     {
-        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0.1)]);
 
         $d = $this->payable(peak: [5, 2.5], offPeak: [3, 1]);   // 2 of 31 days
 
         $this->assertEqualsWithDelta($d->amount / 2 * 31, $d->estimatedAmount, 0.000001);
+        $this->assertEqualsWithDelta($d->totalUsage / 2 * 31, $d->estimatedUsage, 0.000001);
 
+        // The estimates get their own row below the amount, not a note next to it.
         Livewire::test('month-card', ['month' => '2026-10-01'])
-            ->assertSee('(~'.number_format($d->estimatedAmount, 2).')');
+            ->assertDontSee('(~')
+            ->assertSeeInOrder([
+                number_format($d->amount, 2), 'PLN', number_format($d->pricePerUnit, 2), 'PLN/kWh',
+                '~'.number_format($d->estimatedAmount, 2), 'PLN', '~'.number_format($d->estimatedUsage), 'kWh',
+            ]);
     }
 
     public function test_full_month_has_no_estimate(): void
     {
-        Price::create(['since' => '2026-09-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        Price::create(['since' => '2026-09-01', ...$this->twoZonePrices(0.1)]);
         PvInverterReading::create(['date' => '2026-08-31', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1300]);
         $this->meterDays('2026-09-01', '2026-09-30');
@@ -266,12 +330,15 @@ class EnergyUsageTest extends TestCase
         $this->assertSame(30, $d->days);
         $this->assertNotNull($d->amount);
         $this->assertNull($d->estimatedAmount);
+        $this->assertNull($d->estimatedUsage);
+
+        Livewire::test('month-card', ['month' => '2026-09-01'])->assertDontSee('Estimated for the whole month');
     }
 
     public function test_prices_of_the_month_are_used(): void
     {
-        Price::create(['since' => '2026-09-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 1)]);
-        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0)]);
+        Price::create(['since' => '2026-09-01', ...$this->twoZonePrices(1)]);
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0)]);
 
         $this->assertSame(0.0, $this->payable(peak: [5, 2.5], offPeak: [3, 1])->amount);
     }
@@ -365,8 +432,20 @@ class EnergyUsageTest extends TestCase
         Livewire::test('month-card', ['month' => '2026-10-01'])
             ->assertSee('October 2026')
             ->assertSee('1–5 Oct')
-            ->assertSee('100 <span', false)       // PV total
-            ->assertSee('20.0 <span', false);     // PV daily average: 100 kWh / 5 days
+            ->assertSee('>100</span>', false)       // PV total
+            ->assertSee('>20.0</span>', false);     // PV daily average: 100 kWh / 5 days
+    }
+
+    public function test_dashboard_shows_the_flows_card_first(): void
+    {
+        $this->actingAs(User::factory()->create());
+        PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
+        PvInverterReading::create(['date' => '2026-10-31', 'value' => 1310]);
+        $this->meterDays('2026-10-01', '2026-11-02');
+
+        $this->get(route('dashboard'))
+            ->assertSeeInOrder(['November 2026 - Flows', 'November 2026', 'October 2026'])
+            ->assertDontSee('October 2026 - Flows');
     }
 
     public function test_dashboard_shows_meter_month_when_pv_readings_end_before_it(): void

@@ -37,25 +37,26 @@ new class extends Component {
     }
 
     /**
-     * Per month: peak payable, off-peak payable and the rest of the total usage (sun),
+     * Per month: peak, early-peak and off-peak payable and the rest of the total usage (sun),
      * as % of the total usage (and in kWh for the tooltip).
      */
     #[Computed]
     public function chartData(): array
     {
         $categories = [];
-        $percent = ['sun' => [], 'offPeak' => [], 'peak' => []];
-        $kwh = ['sun' => [], 'offPeak' => [], 'peak' => []];
+        $percent = ['sun' => [], 'offPeak' => [], 'earlyPeak' => [], 'peak' => []];
+        $kwh = ['sun' => [], 'offPeak' => [], 'earlyPeak' => [], 'peak' => []];
 
         foreach ($this->summaries as $month => $usage) {
             $categories[] = Carbon::parse($month)->format('M');
 
             $total = $usage?->totalUsage ?? 0;
             $peak = $usage?->peakPayable ?? 0;
+            $earlyPeak = $usage?->earlyPeakPayable ?? 0;
             $offPeak = $usage?->offPeakPayable ?? 0;
-            $sun = max(0, $total - $peak - $offPeak);
+            $sun = max(0, $total - $peak - $earlyPeak - $offPeak);
 
-            foreach (compact('sun', 'offPeak', 'peak') as $key => $value) {
+            foreach (compact('sun', 'offPeak', 'earlyPeak', 'peak') as $key => $value) {
                 $kwh[$key][] = round($value);
                 $percent[$key][] = $total > 0 ? round($value / $total * 100, 1) : 0;
             }
@@ -80,7 +81,14 @@ new class extends Component {
             const isDark = document.documentElement.classList.contains('dark');
             const textColor = isDark ? '#a1a1aa' : '#71717a';
             const gridColor = isDark ? '#27272a' : '#e4e4e7';
-            const keys = ['sun', 'offPeak', 'peak'];
+            // Early-peak only shows once some month has it (three-zone tariff).
+            const series = [
+                { key: 'sun',       name: 'Sun',               color: '#fde047' },
+                { key: 'offPeak',   name: 'Off-Peak Payable',  color: '#4ade80' },
+                { key: 'earlyPeak', name: 'Early-Peak Payable', color: '#fb923c' },
+                { key: 'peak',      name: 'Peak Payable',      color: '#f87171' },
+            ].filter(s => s.key !== 'earlyPeak' || data.kwh.earlyPeak.some(v => v > 0));
+            const keys = series.map(s => s.key);
 
             this.chart = new window.ApexCharts(this.$refs.chart, {
                 chart: {
@@ -91,11 +99,7 @@ new class extends Component {
                     background: 'transparent',
                     fontFamily: 'inherit',
                 },
-                series: [
-                    { name: 'Sun',              data: data.percent.sun },
-                    { name: 'Off-Peak Payable', data: data.percent.offPeak },
-                    { name: 'Peak Payable',     data: data.percent.peak },
-                ],
+                series: series.map(s => ({ name: s.name, data: data.percent[s.key] })),
                 xaxis: {
                     categories: data.categories,
                     labels: { style: { colors: textColor } },
@@ -110,7 +114,7 @@ new class extends Component {
                         formatter: v => Math.round(v) + '%',
                     },
                 },
-                colors: ['#fde047', '#4ade80', '#f87171'],
+                colors: series.map(s => s.color),
                 plotOptions: {
                     bar: { columnWidth: '55%', borderRadius: 3, borderRadiusWhenStacked: 'last' },
                 },

@@ -121,7 +121,7 @@ class CarChargesTest extends TestCase
 
     public function test_total_row_shows_the_amount_at_the_average_price_of_the_month(): void
     {
-        Price::create(['since' => '2026-10-01', ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], 0.1)]);
+        Price::create(['since' => '2026-10-01', ...$this->twoZonePrices(0.1)]);
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-10-05', 'value' => 1100]);
         foreach (['2026-10-01', '2026-10-02'] as $date) {

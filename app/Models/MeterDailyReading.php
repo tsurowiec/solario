@@ -27,18 +27,6 @@ class MeterDailyReading extends Model
         't3_balanced_fed_in',
     ];
 
-    /** Fields listed on the readings page; T3 is stored but not shown there yet. */
-    public const TABLE_FIELDS = [
-        't1_consumed',
-        't1_fed_in',
-        't1_balanced_consumed',
-        't1_balanced_fed_in',
-        't2_consumed',
-        't2_fed_in',
-        't2_balanced_consumed',
-        't2_balanced_fed_in',
-    ];
-
     protected $fillable = [
         'date',
         'hours',
