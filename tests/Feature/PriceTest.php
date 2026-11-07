@@ -46,6 +46,47 @@ class PriceTest extends TestCase
         $this->assertEqualsWithDelta((0.4 + 0.1 + 0.02 + 0.008 + 0.012) * 1.23, $price->grossPerKwh('off_peak'), 0.000001);
     }
 
+    public function test_any_early_peak_price_switches_to_three_zones(): void
+    {
+        $price = Price::create(['since' => '2026-01-01', ...$this->twoZonePrices(0.1)]);
+
+        $this->assertFalse($price->hasEarlyPeak());
+        $this->assertSame(['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2', 't3']], Price::meterZones($price));
+        $this->assertSame(Price::meterZones($price), Price::meterZones(null));
+
+        $price->update(['early_peak_oze' => 0.001]);
+
+        $this->assertTrue($price->hasEarlyPeak());
+        $this->assertSame(['peak' => ['t2'], 'early_peak' => ['t1'], 'off_peak' => ['t3']], Price::meterZones($price));
+    }
+
+    public function test_price_card_shows_early_peak_only_with_three_zones(): void
+    {
+        $this->actingAs(User::factory()->create());
+        Price::create(['since' => '2026-01-01', ...$this->twoZonePrices(0.1)]);
+
+        $this->get(route('prices.index'))->assertOk()->assertDontSee('Early-Peak');
+
+        Price::first()->update(['early_peak_sell' => 0.2]);
+
+        $this->get(route('prices.index'))->assertSeeInOrder(['Peak', 'Early-Peak', 'Off-Peak']);
+    }
+
+    public function test_form_saves_early_peak_prices(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->price('2026-01-01', 0.1);
+
+        Livewire::test('pages::prices.form')
+            ->assertSet('values.early_peak_sell', '0.00000')
+            ->set('since', '2026-11-01')
+            ->set('values.early_peak_sell', '0.55555')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(0.55555, Price::activeOn(Carbon::parse('2026-11-01'))->early_peak_sell);
+    }
+
     public function test_gross_monthly_sums_the_fees_and_adds_vat(): void
     {
         $price = $this->price('2026-01-01', 0);
@@ -216,7 +257,7 @@ class PriceTest extends TestCase
     {
         return Price::create([
             'since' => $since,
-            ...array_fill_keys([...Price::KWH_FIELDS, ...Price::MONTHLY_FIELDS], $value),
+            ...$this->twoZonePrices($value),
         ]);
     }
 }

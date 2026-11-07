@@ -1,6 +1,7 @@
 @props(['price', 'muted' => false, 'badge' => null, 'editable' => true])
 
 <?php
+    $earlyPeak = $price->hasEarlyPeak();
     $rows = [
         'sell' => __('Sell'),
         'distr' => __('Distribution'),
@@ -34,8 +35,13 @@
         <flux:table.columns>
             <flux:table.column>{{ __('PLN/kWh') }}</flux:table.column>
             <flux:table.column align="end" class="w-28">
-                <div class="flex items-center justify-end gap-1"><flux:icon name="sun" variant="mini" class="text-zinc-400" />{{ __('Peak') }}</div>
+                <div class="flex items-center justify-end gap-1"><flux:icon :name="$earlyPeak ? 'sunset' : 'sun'" variant="mini" class="text-zinc-400" />{{ __('Peak') }}</div>
             </flux:table.column>
+            @if ($earlyPeak)
+                <flux:table.column align="end" class="w-28">
+                    <div class="flex items-center justify-end gap-1"><flux:icon name="sunrise" variant="mini" class="text-zinc-400" />{{ __('Early-Peak') }}</div>
+                </flux:table.column>
+            @endif
             <flux:table.column align="end" class="w-28">
                 <div class="flex items-center justify-end gap-1"><flux:icon name="moon" variant="mini" class="text-zinc-400" />{{ __('Off-Peak') }}</div>
             </flux:table.column>
@@ -45,12 +51,18 @@
                 <flux:table.row>
                     <flux:table.cell>{{ $label }}</flux:table.cell>
                     <flux:table.cell align="end" class="tabular-nums">{{ number_format($price->{'peak_'.$key}, 5) }}</flux:table.cell>
+                    @if ($earlyPeak)
+                        <flux:table.cell align="end" class="tabular-nums">{{ number_format($price->{'early_peak_'.$key}, 5) }}</flux:table.cell>
+                    @endif
                     <flux:table.cell align="end" class="tabular-nums">{{ number_format($price->{'off_peak_'.$key}, 5) }}</flux:table.cell>
                 </flux:table.row>
             @endforeach
             <flux:table.row>
                 <flux:table.cell class="font-semibold">{{ __('Total incl. VAT') }}</flux:table.cell>
                 <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('peak'), 2) }}</flux:table.cell>
+                @if ($earlyPeak)
+                    <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('early_peak'), 2) }}</flux:table.cell>
+                @endif
                 <flux:table.cell align="end" class="font-semibold tabular-nums">~{{ number_format($price->grossPerKwh('off_peak'), 2) }}</flux:table.cell>
             </flux:table.row>
         </flux:table.rows>

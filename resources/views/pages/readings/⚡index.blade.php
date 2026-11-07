@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\MeterDailyReading;
+use App\Models\Price;
 use App\Models\PvInverterReading;
 use App\Services\PvInverterInterpolator;
 use Carbon\Carbon;
@@ -100,6 +101,50 @@ class extends Component {
     }
 
     /**
+     * Meter zones shown, with their label and icon, by the selected month's prices.
+     * Three zones: T1 early-peak, T2 peak, T3 off-peak. Two zones: T1 peak, T2 off-peak,
+     * plus T3 (counted as off-peak) only when the month has T3 data.
+     *
+     * @return array<string, array{string, string}>
+     */
+    #[Computed]
+    public function zones(): array
+    {
+        if (Price::activeOn(Carbon::createFromFormat('!Y-m', $this->month))?->hasEarlyPeak()) {
+            return [
+                't1' => [__('Early-Peak (T1)'), 'sunrise'],
+                't2' => [__('Peak (T2)'), 'sunset'],
+                't3' => [__('Off-Peak (T3)'), 'moon'],
+            ];
+        }
+
+        $zones = ['t1' => [__('Peak (T1)'), 'sun'], 't2' => [__('Off-Peak (T2)'), 'moon']];
+
+        $hasT3 = collect($this->days)->pluck('meter')->filter()
+            ->contains(fn (MeterDailyReading $m) => $m->t3_consumed > 0 || $m->t3_fed_in > 0);
+
+        if ($hasT3) {
+            $zones['t3'] = [__('Off-Peak (T3)'), 'moon'];
+        }
+
+        return $zones;
+    }
+
+    /**
+     * Meter fields of the zones shown, in column order.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function fields(): array
+    {
+        return array_values(array_filter(
+            MeterDailyReading::VALUE_FIELDS,
+            fn (string $field) => isset($this->zones[substr($field, 0, 2)]),
+        ));
+    }
+
+    /**
      * Sum of each meter field over the days of the selected month that have meter data.
      *
      * @return array<string, float>
@@ -109,7 +154,7 @@ class extends Component {
     {
         $meter = collect($this->days)->pluck('meter')->filter();
 
-        return collect(MeterDailyReading::TABLE_FIELDS)
+        return collect($this->fields)
             ->mapWithKeys(fn (string $field) => [$field => (float) $meter->sum($field)])
             ->all();
     }
@@ -175,10 +220,10 @@ class extends Component {
             <colgroup>
                 <col span="2" />
                 <col class="w-5" />
-                <col span="8" />
+                <col span="{{ count($this->fields) }}" />
             </colgroup>
             <thead data-flux-columns>
-                @include('partials.readings-header-rows')
+                @include('partials.readings-header-rows', ['zones' => $this->zones])
             </thead>
             <flux:table.rows>
                 @foreach ($this->days as $row)
@@ -201,7 +246,7 @@ class extends Component {
                                 <flux:button size="xs" variant="ghost" icon="pencil" class="-my-1 size-5!" href="{{ route('pv-inverter.edit', $row['pvReading']) }}" wire:navigate />
                             @endif
                         </flux:table.cell>
-                        @foreach (\App\Models\MeterDailyReading::TABLE_FIELDS as $i => $field)
+                        @foreach ($this->fields as $i => $field)
                             <flux:table.cell align="end" @class(['border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ $row['meter'] ? number_format($row['meter']->$field, 3) : '' }}</flux:table.cell>
                         @endforeach
                     </flux:table.row>
@@ -217,7 +262,7 @@ class extends Component {
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="w-5 px-0" />
-                        @foreach (\App\Models\MeterDailyReading::TABLE_FIELDS as $i => $field)
+                        @foreach ($this->fields as $i => $field)
                             <flux:table.cell align="end" @class(['font-semibold', 'border-s border-zinc-800/10 dark:border-white/20' => $i % 2 === 0, 'border-s border-zinc-800/5 dark:border-white/10' => $i % 2 === 1])>{{ number_format($this->totals[$field], 3) }}</flux:table.cell>
                         @endforeach
                     </flux:table.row>
@@ -225,7 +270,7 @@ class extends Component {
             @endif
             @if (count($this->days) >= 7)
                 <tfoot>
-                    @include('partials.readings-header-rows', ['reversed' => true])
+                    @include('partials.readings-header-rows', ['reversed' => true, 'zones' => $this->zones])
                 </tfoot>
             @endif
         </flux:table>

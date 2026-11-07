@@ -117,15 +117,17 @@ class extends Component {
             </flux:card>
 
             <flux:card class="space-y-4">
-                <div class="grid grid-cols-[1fr_7rem_7rem] items-end gap-3">
+                <div class="grid grid-cols-[1fr_7rem_7rem_7rem] items-end gap-3">
                     <flux:heading>{{ __('PLN/kWh') }}</flux:heading>
-                    <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="sun" variant="mini" />{{ __('Peak') }}</flux:subheading>
+                    <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="sunset" variant="mini" />{{ __('Peak') }}</flux:subheading>
+                    <flux:subheading class="flex items-center justify-end gap-1" :title="__('Above 0 switches to three zones')"><flux:icon name="sunrise" variant="mini" />{{ __('Early-Peak') }}</flux:subheading>
                     <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="moon" variant="mini" />{{ __('Off-Peak') }}</flux:subheading>
                 </div>
                 @foreach ($rows as $key => $label)
-                    <div class="grid grid-cols-[1fr_7rem_7rem] items-start gap-3">
+                    <div class="grid grid-cols-[1fr_7rem_7rem_7rem] items-start gap-3">
                         <flux:text class="pt-2">{{ $label }}</flux:text>
                         <flux:input wire:model="values.peak_{{ $key }}" type="number" step="0.00001" min="0" required class:input="text-end" :aria-label="$label.' '.__('Peak')" />
+                        <flux:input wire:model="values.early_peak_{{ $key }}" type="number" step="0.00001" min="0" required class:input="text-end" :aria-label="$label.' '.__('Early-Peak')" />
                         <flux:input wire:model="values.off_peak_{{ $key }}" type="number" step="0.00001" min="0" required class:input="text-end" :aria-label="$label.' '.__('Off-Peak')" />
                     </div>
                 @endforeach
