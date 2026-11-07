@@ -436,7 +436,7 @@ class EnergyUsageTest extends TestCase
             ->assertSee('>20.0</span>', false);     // PV daily average: 100 kWh / 5 days
     }
 
-    public function test_dashboard_shows_the_flows_card_first(): void
+    public function test_dashboard_shows_the_flows_card_above_the_charts(): void
     {
         $this->actingAs(User::factory()->create());
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
@@ -444,7 +444,8 @@ class EnergyUsageTest extends TestCase
         $this->meterDays('2026-10-01', '2026-11-02');
 
         $this->get(route('dashboard'))
-            ->assertSeeInOrder(['November 2026 - Flows', 'November 2026', 'October 2026'])
+            // Landscape only, with the charts; portrait shows the rotate hint instead.
+            ->assertSeeInOrder(['November 2026 - Flows', 'Energy Split', 'Rotate for flows and charts', 'November 2026', 'October 2026'])
             ->assertDontSee('October 2026 - Flows');
     }
 

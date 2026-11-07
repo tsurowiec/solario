@@ -67,20 +67,18 @@ class extends Component {
     </div>
 
     @if ($this->month)
+        {{-- Landscape only, like the charts; it is too wide for portrait. --}}
         <div class="portrait:hidden flex flex-col gap-4">
+            <livewire:month-flows :month="$this->month" :key="'flows-'.$this->month" />
             <livewire:monthly-chart :month="$this->month" :key="'chart-'.$this->month" />
             <livewire:energy-split-chart :month="$this->month" :key="'split-'.$this->month" />
         </div>
         <flux:card class="landscape:hidden flex items-center gap-3 text-zinc-400">
             <flux:icon name="arrow-path" class="shrink-0 rotate-90" />
-            <flux:text>{{ __('Rotate for charts') }}</flux:text>
+            <flux:text>{{ __('Rotate for flows and charts') }}</flux:text>
         </flux:card>
 
         <div class="grid auto-rows-min gap-4 landscape:grid-cols-2">
-            {{-- The Flows card spans both columns. --}}
-            <div class="landscape:col-span-2">
-                <livewire:month-flows :month="$this->month" :key="'flows-'.$this->month" />
-            </div>
             @foreach ($this->months as $month)
                 <livewire:month-card :month="$month" :key="'month-'.$month" />
             @endforeach
