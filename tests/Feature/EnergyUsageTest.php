@@ -432,7 +432,7 @@ class EnergyUsageTest extends TestCase
         Livewire::test('month-card', ['month' => '2026-10-01'])
             ->assertSee('October 2026')
             ->assertSee('1–5 Oct')
-            ->assertSee('>100</span>', false)       // PV total
+            ->assertSee('>100.0</span>', false)     // PV total
             ->assertSee('>20.0</span>', false);     // PV daily average: 100 kWh / 5 days
     }
 

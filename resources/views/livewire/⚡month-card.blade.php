@@ -46,16 +46,16 @@ new class extends Component {
 
     <div x-show="!daily">
         <div class="grid grid-cols-2 gap-2 mb-4">
-            <x-stat icon="sun" color="text-yellow-400" :value="number_format($d->pvGenerated)" unit="kWh" />
-            <x-stat icon="light-bulb" color="text-blue-400" :value="number_format($d->totalUsage)" unit="kWh" />
+            <x-stat icon="sun" color="text-yellow-400" :value="number_format($d->pvGenerated, 1)" unit="kWh" />
+            <x-stat icon="light-bulb" color="text-blue-400" :value="number_format($d->totalUsage, 1)" unit="kWh" />
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
-            <x-stat icon="light-bulb" color="text-yellow-400" :value="number_format($d->autoConsumed)" unit="kWh" />
-            <x-stat icon="chart-pie" color="text-yellow-400" :value="number_format($d->autoConsumedRatio)" unit="%" />
+            <x-stat icon="light-bulb" color="text-yellow-400" :value="number_format($d->autoConsumed, 1)" unit="kWh" />
+            <x-stat icon="chart-pie" color="text-yellow-400" :value="number_format($d->autoConsumedRatio, 1)" unit="%" />
         </div>
         <div class="grid grid-cols-2 gap-2">
-            <x-stat icon="arrow-down-circle" color="text-red-400" :value="number_format($d->consumed)" unit="kWh" />
-            <x-stat icon="arrow-up-circle" color="text-green-400" :value="number_format($d->fedIn)" unit="kWh" />
+            <x-stat icon="arrow-down-circle" color="text-red-400" :value="number_format($d->consumed, 1)" unit="kWh" />
+            <x-stat icon="arrow-up-circle" color="text-green-400" :value="number_format($d->fedIn, 1)" unit="kWh" />
         </div>
 
         <flux:separator class="my-6" />
