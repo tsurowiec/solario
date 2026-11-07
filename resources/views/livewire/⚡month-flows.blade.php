@@ -53,9 +53,9 @@ new class extends Component {
         <div class="grid grid-cols-[repeat(8,max-content)] justify-start items-center gap-x-4 gap-y-2">
             <div></div>
             @foreach ($columns as [$columnLabel, $columnIcon, $columnColor])
-                {{-- Field icon above the unit: skip the value's width (w-12 + gap-1). --}}
+                {{-- Field icon above the unit: skip the value's width (w-10 + gap-1). --}}
                 <div class="flex items-center gap-1" title="{{ $columnLabel }}">
-                    <span class="w-12 shrink-0"></span>
+                    <span class="w-10 shrink-0"></span>
                     <flux:icon :name="$columnIcon" :class="$columnColor" />
                 </div>
             @endforeach
@@ -65,7 +65,7 @@ new class extends Component {
                 @foreach (array_keys($columns) as $field)
                     {{-- Same look as <x-stat>: medium value, small grey unit. --}}
                     <flux:text class="flex items-baseline gap-1">
-                        <span class="w-12 shrink-0 text-end font-medium tabular-nums">{{ number_format($d->flows[$zone]->$field) }}</span>
+                        <span class="w-10 shrink-0 text-end font-medium tabular-nums">{{ number_format($d->flows[$zone]->$field) }}</span>
                         <span class="text-xs text-zinc-400">kWh</span>
                     </flux:text>
                 @endforeach
@@ -79,7 +79,7 @@ new class extends Component {
                 @php($credit = ['fromPreviousMonth' => [$d->creditIn, __('Credit from the previous month')], 'toPool' => [$d->creditOut, __('Credit to the next month')]][$field] ?? null)
                 @if ($credit)
                     <flux:text class="flex items-baseline gap-1" title="{{ $credit[1] }}">
-                        <span class="w-12 shrink-0 text-end font-medium tabular-nums">{{ number_format($credit[0]) }}</span>
+                        <span class="w-10 shrink-0 text-end font-medium tabular-nums">{{ number_format($credit[0]) }}</span>
                         <span class="text-xs text-zinc-400">kWh</span>
                     </flux:text>
                 @else
