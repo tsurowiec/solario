@@ -35,7 +35,7 @@
         <flux:table.columns>
             <flux:table.column>{{ __('PLN/kWh') }}</flux:table.column>
             <flux:table.column align="end" class="w-28">
-                <div class="flex items-center justify-end gap-1"><flux:icon :name="$earlyPeak ? 'sunset' : 'sun'" variant="mini" class="text-zinc-400" />{{ __('Peak') }}</div>
+                <div class="flex items-center justify-end gap-1"><flux:icon name="sun" variant="mini" class="text-zinc-400" />{{ __('Peak') }}</div>
             </flux:table.column>
             @if ($earlyPeak)
                 <flux:table.column align="end" class="w-28">

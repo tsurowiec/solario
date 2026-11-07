@@ -33,7 +33,7 @@ Domain data is returned as readonly VOs from `app/Data/`. Use camelCase public p
 ### Pricing
 Prices are stored in the `Price` model (per-kWh and monthly prices in PLN). `Price::activeOn($date)` returns the prices that apply to a date. Costs in `EnergySummary` are calculated from the active `Price`.
 
-Tariff zones are peak, early-peak and off-peak (`Price::ZONES`, most expensive first). Any early-peak price above 0 (`Price::hasEarlyPeak()`) switches to three zones: T1 morning = early-peak, T2 evening = peak, T3 = off-peak. Otherwise two zones: T1 = peak, T2 + T3 = off-peak. Settlement per month: carried credit first, then each zone's 0.8 × balanced fed-in against its own balanced consumed, then the pooled surplus, each time most expensive zone first; the rest carries over. Icons: sun / moon for two zones, sunrise / sunset / moon for three.
+Tariff zones are peak, early-peak and off-peak (`Price::ZONES`, most expensive first). Any early-peak price above 0 (`Price::hasEarlyPeak()`) switches to three zones: T1 morning = early-peak, T2 evening = peak, T3 = off-peak. Otherwise two zones: T1 = peak, T2 + T3 = off-peak. Settlement per month: carried credit first, then each zone's 0.8 × balanced fed-in against its own balanced consumed, then the pooled surplus, each time most expensive zone first; the rest carries over. Icons: sun / moon for two zones, sunrise / sun / moon for three.
 
 ### Date handling
 Always use local date components (never `toISOString()` in JS) to avoid UTC offset issues. In JS: `getFullYear()` / `getMonth()` / `getDate()`.

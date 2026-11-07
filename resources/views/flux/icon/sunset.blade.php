@@ -19,10 +19,11 @@ $classes = Flux::classes('shrink-0')
         'micro' => '[:where(&)]:size-4',
     });
 
+// Thinner than Lucide's default (2), to match the Heroicons outline stroke (1.5) of sun / moon.
 $strokeWidth = match ($variant) {
-    'outline' => 2,
-    'mini' => 2.25,
-    'micro' => 2.5,
+    'outline' => 1.5,
+    'mini' => 1.75,
+    'micro' => 2,
 };
 @endphp
 

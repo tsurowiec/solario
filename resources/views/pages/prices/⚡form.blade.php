@@ -119,7 +119,7 @@ class extends Component {
             <flux:card class="space-y-4">
                 <div class="grid grid-cols-[1fr_7rem_7rem_7rem] items-end gap-3">
                     <flux:heading>{{ __('PLN/kWh') }}</flux:heading>
-                    <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="sunset" variant="mini" />{{ __('Peak') }}</flux:subheading>
+                    <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="sun" variant="mini" />{{ __('Peak') }}</flux:subheading>
                     <flux:subheading class="flex items-center justify-end gap-1" :title="__('Above 0 switches to three zones')"><flux:icon name="sunrise" variant="mini" />{{ __('Early-Peak') }}</flux:subheading>
                     <flux:subheading class="flex items-center justify-end gap-1"><flux:icon name="moon" variant="mini" />{{ __('Off-Peak') }}</flux:subheading>
                 </div>

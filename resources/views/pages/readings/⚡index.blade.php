@@ -113,7 +113,7 @@ class extends Component {
         if (Price::activeOn(Carbon::createFromFormat('!Y-m', $this->month))?->hasEarlyPeak()) {
             return [
                 't1' => [__('Early-Peak (T1)'), 'sunrise'],
-                't2' => [__('Peak (T2)'), 'sunset'],
+                't2' => [__('Peak (T2)'), 'sun'],
                 't3' => [__('Off-Peak (T3)'), 'moon'],
             ];
         }

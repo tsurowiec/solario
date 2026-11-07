@@ -31,7 +31,7 @@ new class extends Component {
     $d = $this->usage;
     // One row per zone, in time order of the day; with two zones early-peak is empty and left out.
     $zones = $d->hasEarlyPeak
-        ? ['early_peak' => ['sunrise', __('Early-Peak')], 'peak' => ['sunset', __('Peak')], 'off_peak' => ['moon', __('Off-Peak')]]
+        ? ['early_peak' => ['sunrise', __('Early-Peak')], 'peak' => ['sun', __('Peak')], 'off_peak' => ['moon', __('Off-Peak')]]
         : ['peak' => ['sun', __('Peak')], 'off_peak' => ['moon', __('Off-Peak')]];
     // One column per field: [label (tooltip), icon, colour].
     $columns = [

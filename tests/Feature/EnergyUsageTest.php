@@ -151,7 +151,7 @@ class EnergyUsageTest extends TestCase
 
     public function test_three_zones_settle_most_expensive_first(): void
     {
-        // The Flows card example: peak (sunset), early-peak (sunrise), off-peak (moon).
+        // The Flows card example: peak (sun), early-peak (sunrise), off-peak (moon).
         $d = new EnergySummary('2026-10-01', '2026-10-31', 0, 0, 0, 0,
             peakBalancedConsumed: 30, peakBalancedFedIn: 10,
             offPeakBalancedConsumed: 400, offPeakBalancedFedIn: 200,
