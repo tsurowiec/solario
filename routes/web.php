@@ -13,6 +13,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
+    Route::livewire('flows', 'pages::flows.index')->name('flows.index');
     Route::livewire('meter-import', 'pages::meter-import.create')->name('meter-import.create');
     Route::livewire('pv-inverter/create', 'pages::pv-inverter.create')->name('pv-inverter.create');
     Route::livewire('pv-inverter/{reading}/edit', 'pages::pv-inverter.edit')->name('pv-inverter.edit');

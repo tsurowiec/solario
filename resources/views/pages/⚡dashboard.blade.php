@@ -1,9 +1,6 @@
 <?php
 
-use App\Models\MeterDailyReading;
-use App\Models\PvInverterReading;
-use App\Services\PvInverterInterpolator;
-use Carbon\Carbon;
+use App\Services\EnergyUsage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -14,48 +11,21 @@ new #[Title('Dashboard')]
 class extends Component {
 
     /**
-     * The month of the latest day that can have both meter and PV inverter data,
-     * but never before the first meter day (PV readings may start earlier).
-     * With two or more PV readings the PV counter is extrapolated, so the last meter day counts.
-     */
-    #[Computed]
-    public function month(): ?string
-    {
-        $firstMeter = MeterDailyReading::oldest('date')->value('date');
-        $lastMeter = MeterDailyReading::latest('date')->value('date');
-        $lastPv = PvInverterReading::latest('date')->value('date');
-
-        if (! $lastMeter) {
-            return null;
-        }
-
-        $latest = $lastPv && ! app(PvInverterInterpolator::class)->extrapolates()
-            ? max($firstMeter, min($lastMeter, $lastPv))
-            : $lastMeter;
-
-        return Carbon::parse($latest)->startOfMonth()->toDateString();
-    }
-
-    /**
-     * Every month from the first meter day's month up to the latest month, newest first.
+     * Every month with data, newest first (see EnergyUsage::months()).
      *
      * @return list<string>
      */
     #[Computed]
     public function months(): array
     {
-        if (! $this->month) {
-            return [];
-        }
+        return app(EnergyUsage::class)->months();
+    }
 
-        $first = Carbon::parse(MeterDailyReading::oldest('date')->value('date'))->startOfMonth();
-        $months = [];
-
-        for ($month = Carbon::parse($this->month); $month->gte($first); $month->subMonth()) {
-            $months[] = $month->toDateString();
-        }
-
-        return $months;
+    /** The latest month, whose flows and charts are shown. */
+    #[Computed]
+    public function month(): ?string
+    {
+        return $this->months[0] ?? null;
     }
 
 }; ?>

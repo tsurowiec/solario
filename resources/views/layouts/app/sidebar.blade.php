@@ -16,6 +16,10 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
+                    <flux:sidebar.item icon="arrows-right-left" :href="route('flows.index')" :current="request()->routeIs('flows.*')" wire:navigate>
+                        {{ __('Flows') }}
+                    </flux:sidebar.item>
+
                     <flux:sidebar.item icon="list-bullet" :href="route('readings.index')" :current="request()->routeIs('readings.*', 'pv-inverter.edit')" wire:navigate>
                         {{ __('Readings') }}
                     </flux:sidebar.item>

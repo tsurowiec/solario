@@ -28,6 +28,38 @@ class EnergyUsage
     public function __construct(private readonly PvInverterInterpolator $interpolator) {}
 
     /**
+     * Every month (first day, Y-m-d) from the first meter day's month up to the month of the latest day
+     * that can have both meter and PV inverter data, newest first; never before the first meter month
+     * (PV readings may start earlier). With two or more PV readings the PV counter is extrapolated,
+     * so the last meter day counts. Empty without meter data.
+     *
+     * @return list<string>
+     */
+    public function months(): array
+    {
+        $firstMeter = MeterDailyReading::oldest('date')->value('date');
+        $lastMeter = MeterDailyReading::latest('date')->value('date');
+        $lastPv = PvInverterReading::latest('date')->value('date');
+
+        if (! $lastMeter) {
+            return [];
+        }
+
+        $latest = $lastPv && ! $this->interpolator->extrapolates()
+            ? max($firstMeter, min($lastMeter, $lastPv))
+            : $lastMeter;
+
+        $first = Carbon::parse($firstMeter)->startOfMonth();
+        $months = [];
+
+        for ($month = Carbon::parse($latest)->startOfMonth(); $month->gte($first); $month->subMonth()) {
+            $months[] = $month->toDateString();
+        }
+
+        return $months;
+    }
+
+    /**
      * Summary for the month of the given date: from its first full-data day
      * up to the day before the first gap. Null when the month has no full-data day.
      */
