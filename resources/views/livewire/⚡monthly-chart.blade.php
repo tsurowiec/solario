@@ -91,7 +91,9 @@ new class extends Component {
 
             // Compute axis bounds so zero aligns on both axes.
             // The zero position fraction = |min| / (|min| + max) must match.
-            const kwhMax = Math.max(...data.consumed, ...data.autoConsumed, ...data.fedIn, ...data.pvGenerated, 1) * 1.1;
+            // Consumed and auto-consumed are stacked, so their sum is what must fit.
+            const usage = data.consumed.map((v, i) => v + data.autoConsumed[i]);
+            const kwhMax = Math.max(...usage, ...data.fedIn, ...data.pvGenerated, 1) * 1.1;
             const plnMax = Math.max(...data.price, 1) * 1.1;
             const plnMin = Math.min(...data.price, 0) * 1.1;
             // If PLN has negatives, pad kWh below zero by the same proportion
