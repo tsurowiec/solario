@@ -40,7 +40,10 @@ new class extends Component {
     public function chartData(): array
     {
         $categories = [];
-        $consumed = [];
+        $offPeakPaid = [];
+        $earlyPeakPaid = [];
+        $peakPaid = [];
+        $covered = [];
         $autoConsumed = [];
         $fedIn = [];
         $pvGenerated = [];
@@ -48,14 +51,20 @@ new class extends Component {
 
         foreach ($this->summaries as $month => $usage) {
             $categories[] = Carbon::parse($month)->format('M');
-            $consumed[] = round($usage?->consumed ?? 0, 1);
+            // Raw grid consumption split into what is paid for and what fed-in credit
+            // (hourly balancing and settlement) covered.
+            $payable = $usage ? $usage->peakPayable + $usage->earlyPeakPayable + $usage->offPeakPayable : 0;
+            $offPeakPaid[] = round($usage?->offPeakPayable ?? 0, 1);
+            $earlyPeakPaid[] = round($usage?->earlyPeakPayable ?? 0, 1);
+            $peakPaid[] = round($usage?->peakPayable ?? 0, 1);
+            $covered[] = round(max(0, ($usage?->consumed ?? 0) - $payable), 1);
             $autoConsumed[] = round($usage?->autoConsumed ?? 0, 1);
             $fedIn[] = round($usage?->fedIn ?? 0, 1);
             $pvGenerated[] = round($usage?->pvGenerated ?? 0, 1);
             $price[] = round($usage?->amount ?? 0, 2);
         }
 
-        return compact('categories', 'consumed', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
+        return compact('categories', 'offPeakPaid', 'earlyPeakPaid', 'peakPaid', 'covered', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
     }
 
     #[Computed]
@@ -91,13 +100,27 @@ new class extends Component {
 
             // Compute axis bounds so zero aligns on both axes.
             // The zero position fraction = |min| / (|min| + max) must match.
-            // Consumed and auto-consumed are stacked, so their sum is what must fit.
-            const usage = data.consumed.map((v, i) => v + data.autoConsumed[i]);
+            // Auto-consumed, covered and paid per zone are stacked, so their sum is what must fit.
+            const usage = data.autoConsumed.map((v, i) =>
+                v + data.covered[i] + data.offPeakPaid[i] + data.earlyPeakPaid[i] + data.peakPaid[i]);
             const kwhMax = Math.max(...usage, ...data.fedIn, ...data.pvGenerated, 1) * 1.1;
             const plnMax = Math.max(...data.price, 1) * 1.1;
             const plnMin = Math.min(...data.price, 0) * 1.1;
             // If PLN has negatives, pad kWh below zero by the same proportion
             const kwhMin = plnMin < 0 ? kwhMax * (plnMin / plnMax) : 0;
+
+            // Paid is split per tariff zone, red to brown as the price rises;
+            // early-peak is left out when no month has it (two-zone tariff).
+            const series = [
+                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#fde047' },
+                { name: 'Covered',         data: data.covered,       group: 'usage', color: '#fbbf24' },
+                { name: 'Paid off-peak',   data: data.offPeakPaid,   group: 'usage', color: '#ef4444' },
+                { name: 'Paid early-peak', data: data.earlyPeakPaid, group: 'usage', color: '#b91c1c' },
+                { name: 'Paid peak',       data: data.peakPaid,      group: 'usage', color: '#7c2d12' },
+                { name: 'Fed In',          data: data.fedIn,         group: 'fedIn', color: '#4ade80' },
+                { name: 'Generated',       data: data.pvGenerated,   group: 'solar', color: '#fde047' },
+                { name: 'Price',           data: data.price,         group: 'price', color: '#60a5fa' },
+            ].filter(s => s.name !== 'Paid early-peak' || s.data.some(v => v > 0));
 
             this.chart = new window.ApexCharts(this.$refs.chart, {
                 chart: {
@@ -108,13 +131,7 @@ new class extends Component {
                     background: 'transparent',
                     fontFamily: 'inherit',
                 },
-                series: [
-                    { name: 'Consumed',      data: data.consumed,     group: 'usage' },
-                    { name: 'Auto-consumed', data: data.autoConsumed, group: 'usage' },
-                    { name: 'Fed In',        data: data.fedIn,        group: 'fedIn' },
-                    { name: 'Generated',     data: data.pvGenerated,  group: 'solar' },
-                    { name: 'Price',         data: data.price,        group: 'price' },
-                ],
+                series,
                 xaxis: {
                     categories: data.categories,
                     labels: { style: { colors: textColor } },
@@ -122,15 +139,14 @@ new class extends Component {
                     axisTicks: { show: false },
                 },
                 yaxis: [
-                    {
-                        seriesName: 'Consumed',
-                        min: kwhMin, max: kwhMax,
-                        labels: { style: { colors: textColor }, formatter: v => Math.round(v) + ' kWh' },
-                        title: { text: 'kWh', style: { color: textColor } },
-                    },
-                    { seriesName: 'Auto-consumed', show: false, min: kwhMin, max: kwhMax },
-                    { seriesName: 'Fed In',        show: false, min: kwhMin, max: kwhMax },
-                    { seriesName: 'Generated',     show: false, min: kwhMin, max: kwhMax },
+                    ...series.slice(0, -1).map((s, i) => i === 0
+                        ? {
+                            seriesName: s.name,
+                            min: kwhMin, max: kwhMax,
+                            labels: { style: { colors: textColor }, formatter: v => Math.round(v) + ' kWh' },
+                            title: { text: 'kWh', style: { color: textColor } },
+                        }
+                        : { seriesName: s.name, show: false, min: kwhMin, max: kwhMax }),
                     {
                         seriesName: 'Price',
                         opposite: true,
@@ -139,7 +155,6 @@ new class extends Component {
                         title: { text: 'PLN', style: { color: '#60a5fa' } },
                     },
                 ],
-                colors: ['#f87171', '#fbbf24', '#4ade80', '#fde047', '#60a5fa'],
                 plotOptions: {
                     bar: { columnWidth: '55%', borderRadius: 3, borderRadiusWhenStacked: 'last' },
                 },

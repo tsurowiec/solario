@@ -37,15 +37,17 @@ new class extends Component {
     }
 
     /**
-     * Per month: peak, early-peak and off-peak payable and the rest of the total usage (sun),
+     * Per month, the same split as the monthly chart's usage stack: auto-consumed, covered by fed-in
+     * (rest of the grid consumption) and off-peak, early-peak and peak payable,
      * as % of the total usage (and in kWh for the tooltip).
      */
     #[Computed]
     public function chartData(): array
     {
         $categories = [];
-        $percent = ['sun' => [], 'offPeak' => [], 'earlyPeak' => [], 'peak' => []];
-        $kwh = ['sun' => [], 'offPeak' => [], 'earlyPeak' => [], 'peak' => []];
+        $keys = ['autoConsumed', 'covered', 'offPeak', 'earlyPeak', 'peak'];
+        $percent = array_fill_keys($keys, []);
+        $kwh = array_fill_keys($keys, []);
 
         foreach ($this->summaries as $month => $usage) {
             $categories[] = Carbon::parse($month)->format('M');
@@ -54,9 +56,10 @@ new class extends Component {
             $peak = $usage?->peakPayable ?? 0;
             $earlyPeak = $usage?->earlyPeakPayable ?? 0;
             $offPeak = $usage?->offPeakPayable ?? 0;
-            $sun = max(0, $total - $peak - $earlyPeak - $offPeak);
+            $autoConsumed = $usage?->autoConsumed ?? 0;
+            $covered = max(0, ($usage?->consumed ?? 0) - $peak - $earlyPeak - $offPeak);
 
-            foreach (compact('sun', 'offPeak', 'earlyPeak', 'peak') as $key => $value) {
+            foreach (compact($keys) as $key => $value) {
                 $kwh[$key][] = round($value);
                 $percent[$key][] = $total > 0 ? round($value / $total * 100, 1) : 0;
             }
@@ -83,10 +86,12 @@ new class extends Component {
             const gridColor = isDark ? '#27272a' : '#e4e4e7';
             // Early-peak only shows once some month has it (three-zone tariff).
             const series = [
-                { key: 'sun',       name: 'Sun',               color: '#fde047' },
-                { key: 'offPeak',   name: 'Off-Peak Payable',  color: '#4ade80' },
-                { key: 'earlyPeak', name: 'Early-Peak Payable', color: '#fb923c' },
-                { key: 'peak',      name: 'Peak Payable',      color: '#f87171' },
+                // Same parts and colours as the monthly chart's usage stack.
+                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#fde047' },
+                { key: 'covered',      name: 'Covered',         color: '#fbbf24' },
+                { key: 'offPeak',      name: 'Paid off-peak',   color: '#ef4444' },
+                { key: 'earlyPeak',    name: 'Paid early-peak', color: '#b91c1c' },
+                { key: 'peak',         name: 'Paid peak',       color: '#7c2d12' },
             ].filter(s => s.key !== 'earlyPeak' || data.kwh.earlyPeak.some(v => v > 0));
             const keys = series.map(s => s.key);
 

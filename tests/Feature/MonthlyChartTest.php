@@ -23,7 +23,8 @@ class MonthlyChartTest extends TestCase
             ->instance()->chartData;
 
         $this->assertSame(['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], $data['categories']);
-        $this->assertSame(array_fill(0, 12, 3.0), $data['consumed']);
+        $this->assertSame(array_fill(0, 12, 0.0), $data['peakPaid']);
+        $this->assertSame(array_fill(0, 12, 3.0), $data['covered']);
     }
 
     public function test_chart_shows_fewer_months_when_less_data_is_available(): void
@@ -45,7 +46,8 @@ class MonthlyChartTest extends TestCase
         $data = Livewire::test('monthly-chart', ['month' => '2026-09-15'])->instance()->chartData;
 
         $this->assertSame(['Jul', 'Aug', 'Sep'], $data['categories']);
-        $this->assertSame([3.0, 0.0, 3.0], $data['consumed']);
+        $this->assertSame([0.0, 0.0, 0.0], $data['peakPaid']);
+        $this->assertSame([3.0, 0.0, 3.0], $data['covered']);
     }
 
     public function test_dashboard_shows_the_chart(): void
