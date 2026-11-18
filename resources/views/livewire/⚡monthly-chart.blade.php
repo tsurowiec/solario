@@ -110,16 +110,16 @@ new class extends Component {
             // If PLN has negatives, pad kWh below zero by the same proportion
             const kwhMin = plnMin < 0 ? kwhMax * (plnMin / plnMax) : 0;
 
-            // Paid is split per tariff zone, red to brown as the price rises;
+            // Paid is split per tariff zone, light to dark red as the price rises;
             // early-peak is left out when no month has it (two-zone tariff).
             const series = [
-                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#fef08a' },
-                { name: 'Balanced (1:1)',  data: data.balanced,      group: 'usage', color: '#fcd34d' },
-                { name: 'Credit (0.8×)',   data: data.credited,      group: 'usage', color: '#f59e0b' },
-                { name: 'Paid off-peak',   data: data.offPeakPaid,   group: 'usage', color: '#ef4444' },
-                { name: 'Paid early-peak', data: data.earlyPeakPaid, group: 'usage', color: '#b91c1c' },
-                { name: 'Paid peak',       data: data.peakPaid,      group: 'usage', color: '#7c2d12' },
-                { name: 'Fed In',          data: data.fedIn,         group: 'fedIn', color: '#4ade80' },
+                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#6ee7b7' },
+                { name: 'Balanced (1:1)',  data: data.balanced,      group: 'usage', color: '#10b981' },
+                { name: 'Credit (0.8×)',   data: data.credited,      group: 'usage', color: '#047857' },
+                { name: 'Paid off-peak',   data: data.offPeakPaid,   group: 'usage', color: '#f87171' },
+                { name: 'Paid early-peak', data: data.earlyPeakPaid, group: 'usage', color: '#dc2626' },
+                { name: 'Paid peak',       data: data.peakPaid,      group: 'usage', color: '#991b1b' },
+                { name: 'Fed In',          data: data.fedIn,         group: 'fedIn', color: '#fbbf24' },
                 { name: 'Generated',       data: data.pvGenerated,   group: 'solar', color: '#fde047' },
                 { name: 'Price',           data: data.price,         group: 'price', color: '#60a5fa' },
             ].filter(s => s.name !== 'Paid early-peak' || s.data.some(v => v > 0));

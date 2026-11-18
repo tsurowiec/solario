@@ -88,12 +88,12 @@ new class extends Component {
             // Early-peak only shows once some month has it (three-zone tariff).
             const series = [
                 // Same parts and colours as the monthly chart's usage stack.
-                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#fef08a' },
-                { key: 'balanced',     name: 'Balanced (1:1)',  color: '#fcd34d' },
-                { key: 'credited',     name: 'Credit (0.8×)',   color: '#f59e0b' },
-                { key: 'offPeak',      name: 'Paid off-peak',   color: '#ef4444' },
-                { key: 'earlyPeak',    name: 'Paid early-peak', color: '#b91c1c' },
-                { key: 'peak',         name: 'Paid peak',       color: '#7c2d12' },
+                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#6ee7b7' },
+                { key: 'balanced',     name: 'Balanced (1:1)',  color: '#10b981' },
+                { key: 'credited',     name: 'Credit (0.8×)',   color: '#047857' },
+                { key: 'offPeak',      name: 'Paid off-peak',   color: '#f87171' },
+                { key: 'earlyPeak',    name: 'Paid early-peak', color: '#dc2626' },
+                { key: 'peak',         name: 'Paid peak',       color: '#991b1b' },
             ].filter(s => s.key !== 'earlyPeak' || data.kwh.earlyPeak.some(v => v > 0));
             const keys = series.map(s => s.key);
 
