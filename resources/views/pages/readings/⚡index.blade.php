@@ -102,8 +102,8 @@ class extends Component {
 
     /**
      * Meter zones shown, with their label and icon, by the selected month's prices.
-     * Three zones: T1 early-peak, T2 peak, T3 off-peak. Two zones: T1 peak, T2 off-peak,
-     * plus T3 (counted as off-peak) only when the month has T3 data.
+     * Three zones: T1 early-peak, T2 peak, T3 off-peak. Two zones: T1 peak, T2 off-peak;
+     * when the month has T3 data, T3 off-peak too and T2 off-peak / peak (peak on T3 days).
      *
      * @return array<string, array{string, string}>
      */
@@ -124,6 +124,7 @@ class extends Component {
             ->contains(fn (MeterDailyReading $m) => $m->hasT3());
 
         if ($hasT3) {
+            $zones['t2'] = [__('Off-Peak / Peak (T2)'), 'moon'];
             $zones['t3'] = [__('Off-Peak (T3)'), 'moon'];
         }
 

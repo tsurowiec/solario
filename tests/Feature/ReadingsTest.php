@@ -81,7 +81,7 @@ class ReadingsTest extends TestCase
             ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)'])
             ->assertDontSee('(T3)')
             ->set('month', '2026-11')
-            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak (T2)', 'Off-Peak (T3)']);
+            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak / Peak (T2)', 'Off-Peak (T3)']);
     }
 
     public function test_only_actual_pv_readings_are_editable(): void
