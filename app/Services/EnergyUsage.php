@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 /**
  * Combines MeterDailyReading (grid) and PV inverter readings into an EnergySummary.
- * Meter zones map to tariff zones by the month's prices (Price::meterZones()), and credit
+ * Meter zones map to tariff zones by the month's prices and each day's zones (Price::meterZones()), and credit
  * left after a month's settlement carries to the next month.
  *
  * A day has full data when it has a meter row and the PV inverter counter can be
@@ -113,10 +113,12 @@ class EnergyUsage
         $days = $meter->filter(fn (MeterDailyReading $r) => $r->date->betweenIncluded($from, $to));
 
         $price = Price::activeOn($from);
-        $zones = Price::meterZones($price);
-        // Sum of a field (consumed, fed_in, ...) over the meter zones (t1, t2, t3) a tariff zone maps to.
+        // Sum of a field (consumed, fed_in, ...) over the meter zones (t1, t2, t3) a tariff zone maps to on each day.
         $sum = fn (string $zone, string $field) => (float) $days->sum(
-            fn (MeterDailyReading $r) => array_sum(array_map(fn (string $t) => $r->{$t.'_'.$field}, $zones[$zone])),
+            fn (MeterDailyReading $r) => array_sum(array_map(
+                fn (string $t) => $r->{$t.'_'.$field},
+                Price::meterZones($price, $r)[$zone],
+            )),
         );
 
         return new EnergySummary(

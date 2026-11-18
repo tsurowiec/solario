@@ -71,6 +71,14 @@ class MeterDailyReading extends Model
     }
 
     /**
+     * Whether the meter recorded this day in three zones (any T3 consumed or fed in).
+     */
+    public function hasT3(): bool
+    {
+        return $this->t3_consumed > 0 || $this->t3_fed_in > 0;
+    }
+
+    /**
      * Part of the day's time the meter data covers, from 0 to 1.
      */
     public function hoursFraction(): float

@@ -469,11 +469,17 @@ class EnergyUsageTest extends TestCase
         $this->assertSame('2026-11-02', $this->month('2026-11-01')->to);
     }
 
-    public function test_t3_counts_as_off_peak(): void
+    public function test_two_zone_prices_count_t1_and_t2_as_peak_on_days_with_t3(): void
     {
         PvInverterReading::create(['date' => '2026-09-30', 'value' => 1000]);
         PvInverterReading::create(['date' => '2026-10-31', 'value' => 1310]);
+        // Oct 1 without T3: T1 = peak, T2 = off-peak.
         $this->meterDays('2026-10-01', '2026-10-01', [
+            't1_balanced_consumed' => 1, 't2_balanced_consumed' => 2, 't2_balanced_fed_in' => 1,
+        ]);
+        // Oct 2 with T3: T1 + T2 = peak, T3 = off-peak.
+        $this->meterDays('2026-10-02', '2026-10-02', [
+            't1_balanced_consumed' => 1, 't1_balanced_fed_in' => 1,
             't2_balanced_consumed' => 2, 't2_balanced_fed_in' => 1,
             't3_consumed' => 5, 't3_fed_in' => 6,
             't3_balanced_consumed' => 3, 't3_balanced_fed_in' => 1,
@@ -481,11 +487,17 @@ class EnergyUsageTest extends TestCase
 
         $d = $this->month('2026-10-01');
 
-        $this->assertEqualsWithDelta(7.0, $d->offPeakConsumed, 0.0001);   // T2 2 + T3 5
-        $this->assertEqualsWithDelta(13.0, $d->fedIn, 0.0001);            // T1 3 + T2 4 + T3 6
-        $this->assertEqualsWithDelta(5.0, $d->offPeakBalancedConsumed, 0.0001);
-        $this->assertEqualsWithDelta(2.0, $d->offPeakBalancedFedIn, 0.0001);
-        $this->assertEqualsWithDelta(3.4, $d->offPeakPayable, 0.0001);    // 5 − 0.8 × 2
+        $this->assertFalse($d->hasEarlyPeak);
+        $this->assertEqualsWithDelta(1 + (1 + 2), $d->peakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(2 + 5, $d->offPeakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(0.0, $d->earlyPeakConsumed, 0.0001);
+        $this->assertEqualsWithDelta(7 + 13, $d->fedIn, 0.0001);   // T1 3 + T2 4 (+ T3 6)
+        $this->assertEqualsWithDelta(1 + (1 + 2), $d->peakBalancedConsumed, 0.0001);
+        $this->assertEqualsWithDelta(0 + (1 + 1), $d->peakBalancedFedIn, 0.0001);
+        $this->assertEqualsWithDelta(2 + 3, $d->offPeakBalancedConsumed, 0.0001);
+        $this->assertEqualsWithDelta(1 + 1, $d->offPeakBalancedFedIn, 0.0001);
+        $this->assertEqualsWithDelta(4 - 0.8 * 2, $d->peakPayable, 0.0001);
+        $this->assertEqualsWithDelta(5 - 0.8 * 2, $d->offPeakPayable, 0.0001);
     }
 
     private function month(string $date)

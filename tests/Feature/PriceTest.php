@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\MeterDailyReading;
 use App\Models\Price;
 use App\Models\User;
 use Carbon\Carbon;
@@ -51,13 +52,19 @@ class PriceTest extends TestCase
         $price = Price::create(['since' => '2026-01-01', ...$this->twoZonePrices(0.1)]);
 
         $this->assertFalse($price->hasEarlyPeak());
-        $this->assertSame(['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2', 't3']], Price::meterZones($price));
+        $this->assertSame(['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2']], Price::meterZones($price));
         $this->assertSame(Price::meterZones($price), Price::meterZones(null));
+
+        // A day the meter recorded in three zones: T1 + T2 = peak, T3 = off-peak.
+        $t3Day = new MeterDailyReading(['t3_consumed' => 1]);
+        $this->assertSame(['peak' => ['t1', 't2'], 'early_peak' => [], 'off_peak' => ['t3']], Price::meterZones($price, $t3Day));
+        $this->assertSame(['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2']], Price::meterZones($price, new MeterDailyReading(['t3_consumed' => 0, 't3_fed_in' => 0])));
 
         $price->update(['early_peak_oze' => 0.001]);
 
         $this->assertTrue($price->hasEarlyPeak());
         $this->assertSame(['peak' => ['t2'], 'early_peak' => ['t1'], 'off_peak' => ['t3']], Price::meterZones($price));
+        $this->assertSame(Price::meterZones($price), Price::meterZones($price, $t3Day));
     }
 
     public function test_price_card_shows_early_peak_only_with_three_zones(): void

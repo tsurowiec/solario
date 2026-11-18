@@ -78,18 +78,23 @@ class Price extends Model
     }
 
     /**
-     * Meter zone columns (t1, t2, t3) per tariff zone, in Price::ZONES order.
+     * Meter zone columns (t1, t2, t3) per tariff zone for a day, in Price::ZONES order.
      * Three zones: T1 morning = early-peak, T2 evening = peak, T3 = off-peak.
-     * Two zones (or no prices): T1 = peak, T2 = off-peak, with T3 counted as off-peak too
-     * and early-peak empty, so meter data imported before the new prices keeps its totals.
+     * Two zones (or no prices), early-peak empty: a day the meter recorded in three zones
+     * (MeterDailyReading::hasT3()) counts T1 + T2 as peak and T3 as off-peak; any other day
+     * T1 = peak, T2 = off-peak.
      *
      * @return array{peak: list<string>, early_peak: list<string>, off_peak: list<string>}
      */
-    public static function meterZones(?self $price): array
+    public static function meterZones(?self $price, ?MeterDailyReading $day = null): array
     {
-        return $price?->hasEarlyPeak()
-            ? ['peak' => ['t2'], 'early_peak' => ['t1'], 'off_peak' => ['t3']]
-            : ['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2', 't3']];
+        if ($price?->hasEarlyPeak()) {
+            return ['peak' => ['t2'], 'early_peak' => ['t1'], 'off_peak' => ['t3']];
+        }
+
+        return $day?->hasT3()
+            ? ['peak' => ['t1', 't2'], 'early_peak' => [], 'off_peak' => ['t3']]
+            : ['peak' => ['t1'], 'early_peak' => [], 'off_peak' => ['t2']];
     }
 
     /**

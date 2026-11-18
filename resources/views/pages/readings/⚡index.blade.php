@@ -121,7 +121,7 @@ class extends Component {
         $zones = ['t1' => [__('Peak (T1)'), 'sun'], 't2' => [__('Off-Peak (T2)'), 'moon']];
 
         $hasT3 = collect($this->days)->pluck('meter')->filter()
-            ->contains(fn (MeterDailyReading $m) => $m->t3_consumed > 0 || $m->t3_fed_in > 0);
+            ->contains(fn (MeterDailyReading $m) => $m->hasT3());
 
         if ($hasT3) {
             $zones['t3'] = [__('Off-Peak (T3)'), 'moon'];
