@@ -82,7 +82,8 @@ class ReadingsTest extends TestCase
             ->assertDontSee('(T3)')
             ->set('month', '2026-11')
             // "Off-Peak / Peak (T2)": the response is JSON, where "/" is escaped, so it is matched in parts.
-            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak', 'Peak (T2)', 'Off-Peak (T3)']);
+            ->assertSeeInOrder(['Peak (T1)', 'Off-Peak', 'Peak (T2)', 'Off-Peak (T3)'])
+            ->assertDontSee('Off-Peak (T2)');
     }
 
     public function test_only_actual_pv_readings_are_editable(): void
