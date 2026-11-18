@@ -78,9 +78,9 @@ new class extends Component {
 
         @foreach ($d->carUsage as $car => $kWh)
             <div class="grid grid-cols-2 gap-2 mt-4">
-                <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($kWh, 1)" unit="kWh" />
+                <x-stat icon="car" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($kWh, 1)" unit="kWh" />
                 @if ($d->amount !== null)
-                    <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carAmounts[$car], 2)" unit="PLN" />
+                    <x-stat icon="car" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carAmounts[$car], 2)" unit="PLN" />
                 @endif
             </div>
         @endforeach
@@ -117,9 +117,9 @@ new class extends Component {
 
         @foreach ($d->carUsage as $car => $kWh)
             <div class="grid grid-cols-2 gap-2 mt-4">
-                <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carRange[$car])" unit="km" />
+                <x-stat icon="car" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carRange[$car])" unit="km" />
                 @if ($d->carCostPer100Km[$car] !== null)
-                    <x-stat icon="bolt" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carCostPer100Km[$car], 2)" unit="PLN/100km" />
+                    <x-stat icon="car" :color="$carColors[$car] ?? 'text-zinc-400'" :value="number_format($d->carCostPer100Km[$car], 2)" unit="PLN/100km" />
                 @endif
             </div>
         @endforeach
