@@ -40,6 +40,12 @@ readonly class EnergySummary
     /** kWh to pay for in the off-peak zone. */
     public float $offPeakPayable;
 
+    /** kWh of raw grid consumption cancelled 1:1 by fed-in within the same hour (raw − balanced consumed, all zones). */
+    public float $hourlyBalanced;
+
+    /** kWh of balanced consumption settled by credit (Price::FED_IN_RATIO × balanced fed-in, own and other zones, and credit carried in). */
+    public float $credited;
+
     /** Credit left after settling every zone; it carries to the next month. */
     public float $creditOut;
 
@@ -140,6 +146,9 @@ readonly class EnergySummary
         $this->peakPayable = $this->flows['peak']->payable;
         $this->earlyPeakPayable = $this->flows['early_peak']->payable;
         $this->offPeakPayable = $this->flows['off_peak']->payable;
+        $balancedConsumed = $peakBalancedConsumed + $earlyPeakBalancedConsumed + $offPeakBalancedConsumed;
+        $this->hourlyBalanced = max(0.0, $this->consumed - $balancedConsumed);
+        $this->credited = $balancedConsumed - $this->peakPayable - $this->earlyPeakPayable - $this->offPeakPayable;
 
         $this->amount = $price ? $this->amount($price) : null;
         $daysInMonth = Carbon::parse($from)->daysInMonth;

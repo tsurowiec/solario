@@ -43,7 +43,8 @@ new class extends Component {
         $offPeakPaid = [];
         $earlyPeakPaid = [];
         $peakPaid = [];
-        $covered = [];
+        $balanced = [];
+        $credited = [];
         $autoConsumed = [];
         $fedIn = [];
         $pvGenerated = [];
@@ -51,20 +52,20 @@ new class extends Component {
 
         foreach ($this->summaries as $month => $usage) {
             $categories[] = Carbon::parse($month)->format('M');
-            // Raw grid consumption split into what is paid for and what fed-in credit
-            // (hourly balancing and settlement) covered.
-            $payable = $usage ? $usage->peakPayable + $usage->earlyPeakPayable + $usage->offPeakPayable : 0;
+            // Raw grid consumption split into what hourly balancing cancelled 1:1,
+            // what fed-in credit (0.8×) settled and what is paid for.
             $offPeakPaid[] = round($usage?->offPeakPayable ?? 0, 1);
             $earlyPeakPaid[] = round($usage?->earlyPeakPayable ?? 0, 1);
             $peakPaid[] = round($usage?->peakPayable ?? 0, 1);
-            $covered[] = round(max(0, ($usage?->consumed ?? 0) - $payable), 1);
+            $balanced[] = round($usage?->hourlyBalanced ?? 0, 1);
+            $credited[] = round($usage?->credited ?? 0, 1);
             $autoConsumed[] = round($usage?->autoConsumed ?? 0, 1);
             $fedIn[] = round($usage?->fedIn ?? 0, 1);
             $pvGenerated[] = round($usage?->pvGenerated ?? 0, 1);
             $price[] = round($usage?->amount ?? 0, 2);
         }
 
-        return compact('categories', 'offPeakPaid', 'earlyPeakPaid', 'peakPaid', 'covered', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
+        return compact('categories', 'offPeakPaid', 'earlyPeakPaid', 'peakPaid', 'balanced', 'credited', 'autoConsumed', 'fedIn', 'pvGenerated', 'price');
     }
 
     #[Computed]
@@ -100,9 +101,9 @@ new class extends Component {
 
             // Compute axis bounds so zero aligns on both axes.
             // The zero position fraction = |min| / (|min| + max) must match.
-            // Auto-consumed, covered and paid per zone are stacked, so their sum is what must fit.
+            // Auto-consumed, balanced, credited and paid per zone are stacked, so their sum is what must fit.
             const usage = data.autoConsumed.map((v, i) =>
-                v + data.covered[i] + data.offPeakPaid[i] + data.earlyPeakPaid[i] + data.peakPaid[i]);
+                v + data.balanced[i] + data.credited[i] + data.offPeakPaid[i] + data.earlyPeakPaid[i] + data.peakPaid[i]);
             const kwhMax = Math.max(...usage, ...data.fedIn, ...data.pvGenerated, 1) * 1.1;
             const plnMax = Math.max(...data.price, 1) * 1.1;
             const plnMin = Math.min(...data.price, 0) * 1.1;
@@ -112,8 +113,9 @@ new class extends Component {
             // Paid is split per tariff zone, red to brown as the price rises;
             // early-peak is left out when no month has it (two-zone tariff).
             const series = [
-                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#fde047' },
-                { name: 'Covered',         data: data.covered,       group: 'usage', color: '#fbbf24' },
+                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#fef08a' },
+                { name: 'Balanced (1:1)',  data: data.balanced,      group: 'usage', color: '#fcd34d' },
+                { name: 'Credit (0.8×)',   data: data.credited,      group: 'usage', color: '#f59e0b' },
                 { name: 'Paid off-peak',   data: data.offPeakPaid,   group: 'usage', color: '#ef4444' },
                 { name: 'Paid early-peak', data: data.earlyPeakPaid, group: 'usage', color: '#b91c1c' },
                 { name: 'Paid peak',       data: data.peakPaid,      group: 'usage', color: '#7c2d12' },

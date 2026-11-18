@@ -37,15 +37,15 @@ new class extends Component {
     }
 
     /**
-     * Per month, the same split as the monthly chart's usage stack: auto-consumed, covered by fed-in
-     * (rest of the grid consumption) and off-peak, early-peak and peak payable,
+     * Per month, the same split as the monthly chart's usage stack: auto-consumed, grid consumption
+     * cancelled by hourly balancing (1:1), settled by fed-in credit (0.8×) and off-peak, early-peak and peak payable,
      * as % of the total usage (and in kWh for the tooltip).
      */
     #[Computed]
     public function chartData(): array
     {
         $categories = [];
-        $keys = ['autoConsumed', 'covered', 'offPeak', 'earlyPeak', 'peak'];
+        $keys = ['autoConsumed', 'balanced', 'credited', 'offPeak', 'earlyPeak', 'peak'];
         $percent = array_fill_keys($keys, []);
         $kwh = array_fill_keys($keys, []);
 
@@ -57,7 +57,8 @@ new class extends Component {
             $earlyPeak = $usage?->earlyPeakPayable ?? 0;
             $offPeak = $usage?->offPeakPayable ?? 0;
             $autoConsumed = $usage?->autoConsumed ?? 0;
-            $covered = max(0, ($usage?->consumed ?? 0) - $peak - $earlyPeak - $offPeak);
+            $balanced = $usage?->hourlyBalanced ?? 0;
+            $credited = $usage?->credited ?? 0;
 
             foreach (compact($keys) as $key => $value) {
                 $kwh[$key][] = round($value);
@@ -87,8 +88,9 @@ new class extends Component {
             // Early-peak only shows once some month has it (three-zone tariff).
             const series = [
                 // Same parts and colours as the monthly chart's usage stack.
-                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#fde047' },
-                { key: 'covered',      name: 'Covered',         color: '#fbbf24' },
+                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#fef08a' },
+                { key: 'balanced',     name: 'Balanced (1:1)',  color: '#fcd34d' },
+                { key: 'credited',     name: 'Credit (0.8×)',   color: '#f59e0b' },
                 { key: 'offPeak',      name: 'Paid off-peak',   color: '#ef4444' },
                 { key: 'earlyPeak',    name: 'Paid early-peak', color: '#b91c1c' },
                 { key: 'peak',         name: 'Paid peak',       color: '#7c2d12' },

@@ -14,19 +14,19 @@ class EnergySplitChartTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_splits_total_usage_into_auto_consumed_covered_and_payable_per_zone(): void
+    public function test_splits_total_usage_into_auto_consumed_balanced_credited_and_payable_per_zone(): void
     {
         $this->july();
 
         $data = Livewire::test('energy-split-chart', ['month' => '2026-07-15'])->instance()->chartData;
 
-        // Total usage: consumed 3 + auto-consumed (PV 20 − fed-in 7) = 16; payable peak 1, off-peak 2, nothing covered.
+        // Total usage: consumed 3 + auto-consumed (PV 20 − fed-in 7) = 16; payable peak 1, off-peak 2, nothing balanced or credited.
         $this->assertSame(['Jul'], $data['categories']);
-        $this->assertEquals(['autoConsumed' => [13], 'covered' => [0], 'offPeak' => [2], 'earlyPeak' => [0], 'peak' => [1]], $data['kwh']);
-        $this->assertEquals(['autoConsumed' => [81.3], 'covered' => [0], 'offPeak' => [12.5], 'earlyPeak' => [0], 'peak' => [6.3]], $data['percent']);
+        $this->assertEquals(['autoConsumed' => [13], 'balanced' => [0], 'credited' => [0], 'offPeak' => [2], 'earlyPeak' => [0], 'peak' => [1]], $data['kwh']);
+        $this->assertEquals(['autoConsumed' => [81.3], 'balanced' => [0], 'credited' => [0], 'offPeak' => [12.5], 'earlyPeak' => [0], 'peak' => [6.3]], $data['percent']);
     }
 
-    public function test_grid_use_balanced_by_fed_in_is_covered(): void
+    public function test_grid_use_is_split_into_hourly_balanced_and_credited(): void
     {
         PvInverterReading::create(['date' => '2026-06-30', 'value' => 0]);
         PvInverterReading::create(['date' => '2026-07-01', 'value' => 20]);
@@ -34,14 +34,14 @@ class EnergySplitChartTest extends TestCase
             'date' => '2026-07-01',
             't1_consumed' => 1, 't2_consumed' => 2,
             't1_fed_in' => 3, 't2_fed_in' => 4,
-            't1_balanced_consumed' => 0, 't2_balanced_consumed' => 0,
-            't1_balanced_fed_in' => 2, 't2_balanced_fed_in' => 2,
+            't1_balanced_consumed' => 0, 't2_balanced_consumed' => 2,
+            't1_balanced_fed_in' => 2.5, 't2_balanced_fed_in' => 0,
         ]);
 
         $data = Livewire::test('energy-split-chart', ['month' => '2026-07-15'])->instance()->chartData;
 
-        // Hourly balancing leaves nothing to pay for: all 3 kWh from the grid are covered.
-        $this->assertEquals(['autoConsumed' => [13], 'covered' => [3], 'offPeak' => [0], 'earlyPeak' => [0], 'peak' => [0]], $data['kwh']);
+        // Hourly balancing cancels 1 of the 3 kWh from the grid (1:1); T1's credit 0.8 × 2.5 = 2 settles T2's 2 kWh.
+        $this->assertEquals(['autoConsumed' => [13], 'balanced' => [1], 'credited' => [2], 'offPeak' => [0], 'earlyPeak' => [0], 'peak' => [0]], $data['kwh']);
     }
 
     public function test_three_zones_add_early_peak_payable(): void
@@ -52,7 +52,7 @@ class EnergySplitChartTest extends TestCase
         $data = Livewire::test('energy-split-chart', ['month' => '2026-07-15'])->instance()->chartData;
 
         // T1 (1 kWh) is early-peak, T2 (2 kWh) peak, nothing left for off-peak; auto-consumed 13.
-        $this->assertEquals(['autoConsumed' => [13], 'covered' => [0], 'offPeak' => [0], 'earlyPeak' => [1], 'peak' => [2]], $data['kwh']);
+        $this->assertEquals(['autoConsumed' => [13], 'balanced' => [0], 'credited' => [0], 'offPeak' => [0], 'earlyPeak' => [1], 'peak' => [2]], $data['kwh']);
     }
 
     public function test_months_without_data_after_the_first_are_zero(): void
