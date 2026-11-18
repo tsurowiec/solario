@@ -24,7 +24,7 @@
                         {{ __('Readings') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="bolt" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
+                    <flux:sidebar.item icon="car" :href="route('car-charges.index')" :current="request()->routeIs('car-charges.*')" wire:navigate>
                         {{ __('Car Charges') }}
                     </flux:sidebar.item>
 

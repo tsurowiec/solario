@@ -33,7 +33,7 @@ class extends Component {
 <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
     <div class="flex flex-wrap gap-2">
         <flux:button href="{{ route('readings.index') }}" icon="list-bullet" wire:navigate>{{ __('Readings') }}</flux:button>
-        <flux:button href="{{ route('car-charges.index') }}" icon="bolt" wire:navigate>{{ __('Car Charges') }}</flux:button>
+        <flux:button href="{{ route('car-charges.index') }}" icon="car" wire:navigate>{{ __('Car Charges') }}</flux:button>
     </div>
 
     @if ($this->month)

@@ -97,7 +97,7 @@ class extends Component {
         <flux:card wire:key="car-{{ $carId }}" class="space-y-4">
             <div class="flex items-center justify-between">
                 <flux:heading size="lg" class="flex items-center gap-2">
-                    <flux:icon name="bolt" :class="(\App\Models\CarCharge::COLORS[$carId] ?? 'text-zinc-400').' shrink-0'" />
+                    <flux:icon name="car" :class="(\App\Models\CarCharge::COLORS[$carId] ?? 'text-zinc-400').' shrink-0'" />
                     {{ ucfirst($carId) }}
                 </flux:heading>
                 <flux:button size="sm" href="{{ route('car-charges.create', ['car' => $carId, 'month' => $month]) }}" icon="plus" wire:navigate>{{ __('Add Charge') }}</flux:button>
