@@ -88,9 +88,9 @@ new class extends Component {
             // Early-peak only shows once some month has it (three-zone tariff).
             const series = [
                 // Same parts and colours as the monthly chart's usage stack.
-                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#6ee7b7' },
-                { key: 'balanced',     name: 'Balanced (1:1)',  color: '#10b981' },
-                { key: 'credited',     name: 'Credit (0.8×)',   color: '#047857' },
+                { key: 'autoConsumed', name: 'Auto-consumed',   color: '#a3d977' },
+                { key: 'balanced',     name: 'Balanced (1:1)',  color: '#5fb041' },
+                { key: 'credited',     name: 'Credit (0.8×)',   color: '#2f7a2a' },
                 { key: 'offPeak',      name: 'Paid off-peak',   color: '#f87171' },
                 { key: 'earlyPeak',    name: 'Paid early-peak', color: '#dc2626' },
                 { key: 'peak',         name: 'Paid peak',       color: '#991b1b' },

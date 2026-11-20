@@ -113,9 +113,9 @@ new class extends Component {
             // Paid is split per tariff zone, light to dark red as the price rises;
             // early-peak is left out when no month has it (two-zone tariff).
             const series = [
-                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#6ee7b7' },
-                { name: 'Balanced (1:1)',  data: data.balanced,      group: 'usage', color: '#10b981' },
-                { name: 'Credit (0.8×)',   data: data.credited,      group: 'usage', color: '#047857' },
+                { name: 'Auto-consumed',   data: data.autoConsumed,  group: 'usage', color: '#a3d977' },
+                { name: 'Balanced (1:1)',  data: data.balanced,      group: 'usage', color: '#5fb041' },
+                { name: 'Credit (0.8×)',   data: data.credited,      group: 'usage', color: '#2f7a2a' },
                 { name: 'Paid off-peak',   data: data.offPeakPaid,   group: 'usage', color: '#f87171' },
                 { name: 'Paid early-peak', data: data.earlyPeakPaid, group: 'usage', color: '#dc2626' },
                 { name: 'Paid peak',       data: data.peakPaid,      group: 'usage', color: '#991b1b' },
