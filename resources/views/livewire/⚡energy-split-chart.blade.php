@@ -91,8 +91,8 @@ new class extends Component {
                 { key: 'autoConsumed', name: 'Auto-consumed',   color: '#a3d977' },
                 { key: 'balanced',     name: 'Balanced (1:1)',  color: '#5fb041' },
                 { key: 'credited',     name: 'Credit (0.8×)',   color: '#2f7a2a' },
-                { key: 'offPeak',      name: 'Paid off-peak',   color: '#f87171' },
-                { key: 'earlyPeak',    name: 'Paid early-peak', color: '#dc2626' },
+                { key: 'offPeak',      name: 'Paid off-peak',   color: '#ef4444' },
+                { key: 'earlyPeak',    name: 'Paid early-peak', color: '#c81e1e' },
                 { key: 'peak',         name: 'Paid peak',       color: '#991b1b' },
             ].filter(s => s.key !== 'earlyPeak' || data.kwh.earlyPeak.some(v => v > 0));
             const keys = series.map(s => s.key);
